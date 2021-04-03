@@ -1,0 +1,72 @@
+---
+external:
+  hosts:
+    # The ip address (or hostname) of the host you want to install
+    #
+    ${TARGET_SERVER_IP_ADDRESS_HERE}:
+      # The list of disks that you want to use for the root partition, as a
+      # path from /dev (e.g for /dev/sda, use 'sda')
+      #
+      # If you want a single disk, just pass a single entry in the array.
+      #
+      # Examples:
+      #
+      # # Simple one disk setup using /dev/sda
+      # root_disks: ["sda"]
+      #
+      # # Pair of disk as a mirror pool
+      # root_disks: ["sda", "sdb"]
+      #
+      root_disks: ["FILL ME UP"]
+
+      # The ZFS pool mode for the boot and root pool.
+      #
+      # If absent, assumes a single drive setup.
+      #
+      # Useful values could be: mirror,raidz1,raidz2
+      #
+      pool_mode:
+
+      # The password to use to encrypt for the root pool
+      zfs_pool_password: "FILL ME UP"
+
+      # The fully qualified domain name of your computer
+      #
+      fqdn: "FILL ME UP"
+
+      # The username for the user in the 'sudo' group
+      #
+      admin_username: "admin"
+
+      # The password the admin, generate one using `mkpasswd --method=sha-512`
+      #
+      admin_password:
+
+      # The ssh public key for the administrator.
+      #
+      # This will enable logging in remotely and deciphering the disks.
+      #
+      admin_public_key:
+
+      ##
+      # Optional aditional configuration
+      ##
+
+      # The network interface on which to configure connectivity
+      #
+      network_interface: enp1s0
+
+      # A proxy for downloading apt packages
+      #
+      apt_proxy_url:
+
+      # The port on which to export the dropbear for unlocking disks via ssh
+      #
+      dropbear_port: "4748"
+
+      # The password to use for mokutil management
+      #
+      # Defaults to the admin password.
+      # Use `mkpasswd --method=sha512` to generate one otherwise.
+      #
+      mokutil_password: "{{ admin_password }}"

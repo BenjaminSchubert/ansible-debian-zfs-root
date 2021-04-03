@@ -1,0 +1,274 @@
+---
+- hosts: external
+
+  vars:
+    ansible_user: root
+    ansible_connection: chroot
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Mount /boot/efi
+      mount:
+        fstype: vfat
+        opts: x-systemd.idle-timeout=1min,x-systemd.automount,noauto
+        passno: "1"
+        path: /boot/efi
+        src: UUID={{ ansible_devices[root_disk].partitions[root_disk + '1'].uuid }}
+        state: mounted
+
+    - name: Set the hostname
+      copy:
+        dest: /etc/hostname
+        content: "{{ fqdn.split('.')[0] }}"
+        mode: 0o644
+
+    - name: Set the hostname and fqdn in etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127.0.1.1'
+        insertafter: '^127.0.0.1'
+        line: 127.0.1.1 {{ fqdn }} {{ fqdn.split(".")[0] }}
+
+    - name: Create the network config file
+      template:
+        src: network.j2
+        dest: /etc/systemd/network/lan0.network
+        mode: 0o644
+
+    - name: Enable systemd-networkd
+      systemd:
+        service: systemd-networkd
+        enabled: true
+
+    - name: remove the default sources file
+      file:
+        path: /etc/apt/sources.list
+        state: absent
+
+    - name: Setup apt sources
+      template:
+        src: sources.list.j2
+        dest: "/etc/apt/sources.list.d/{{ debian_version }}.list"
+        owner: root
+        group: root
+        mode: 0o644
+
+    - name: Ensure all packages are up to date
+      apt:
+        upgrade: safe
+        force_apt_get: true
+        autoclean: true
+        autoremove: true
+        update_cache: true
+
+    - name: Install kernel drivers utilities
+      apt:
+        name:
+          - dkms
+          - openssl
+        state: present
+        install_recommends: false
+
+    - name: Sign kernel modules on install
+      lineinfile:
+        path: /etc/dkms/framework.conf
+        regexp: '^#\s(sign_tool.*)'
+        line: '\1'
+        backrefs: true
+        state: present
+
+    - name: Ensure ZFS update rebuilds all initramfs
+      copy:
+        dest: /etc/dkms/zfs.conf
+        content: REMAKE_INITRD=yes
+        mode: 0o644
+      become: true
+
+    - name: Create key to sign kernel modules
+      command: |
+        openssl \
+          req \
+          -nodes \
+          -new -x509 -newkey rsa:2048 \
+          -keyout /root/mok.priv \
+          -outform DER -out /root/mok.der \
+          -days 36500 \
+          -subj "/CN={{ fqdn }} module signing key/"
+      args:
+        creates: /root/mok.priv
+
+    - name: Install required packages
+      apt:
+        name:
+          - console-setup
+          - dropbear-initramfs
+          - linux-image-amd64
+          - linux-headers-amd64
+          - locales
+          - openssh-server
+          - sudo
+          - zfs-initramfs
+          - zfs-zed
+          - grub-efi-amd64
+          - grub-efi-amd64-signed
+          - shim-signed
+        install_recommends: false
+
+    - name: Ensure the en_US.UTF-8 locale exists
+      locale_gen:
+        name: en_US.UTF-8
+        state: present
+
+    - name: Set default locale to en_US.UTF-8
+      debconf:
+        name: locales
+        question: locales/default_environment_locale
+        value: en_US.UTF-8
+        vtype: select
+
+    - name: Configure locales to generate
+      debconf:
+        name: locales
+        question: locales/locales_to_be_generated
+        value: en_US.UTF-8 UTF-8
+        vtype: multiselect
+
+    - name: Set timezone area
+      debconf:
+        name: tzdata
+        question: tzdata/Areas
+        value: Europe
+        vtype: select
+
+    - name: Set timezone city
+      debconf:
+        name: tzdata
+        question: tzdata/Zones/Europe
+        value: London
+        vtype: select
+
+    - name: Set timezone UTC
+      debconf:
+        name: tzdata
+        question: tzdata/Zones/Etc
+        value: UTC
+        vtype: select
+
+    - name: Set keyboard
+      debconf:
+        name: keyboard-configuration
+        question: keyboard-configuration/variant
+        value: English (US)
+        vtype: select
+
+    - name: Create the admin user
+      user:
+        name: "{{ admin_username }}"
+        password: "{{ admin_password }}"
+        create_home: true
+        shell: /bin/bash
+        groups:
+          - sudo
+
+    - name: Set authorized key taken for the admin user
+      authorized_key:
+        user: "{{ admin_username }}"
+        state: present
+        key: "{{ admin_public_key }}"
+
+    - name: Enable zfs-import-scan
+      systemd:
+        name: zfs-import-scan
+        enabled: true
+
+    - name: Mask zfs-import-cache
+      systemd:
+        name: zfs-import-cache
+        masked: true
+
+    - name: Ensure the ZFS cache file doesn't exist
+      file:
+        path: /etc/zfs/zpool.cache
+        state: absent
+
+    - name: Create the zfs-import-scan service override directory
+      file:
+        path: /etc/systemd/system/zfs-import-scan.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: 0o755
+
+    - name: Override the zfs-import-scan service to not check for zpool.cache
+      copy:
+        content: |
+          [Unit]
+          ConditionPathExists=
+        dest: /etc/systemd/system/zfs-import-scan.service.d/run-even-if-cache-exists.conf
+        owner: root
+        group: root
+        mode: 0o644
+
+    - name: Authorize user for remote-unlock
+      authorized_key:
+        key: "{{ admin_public_key }}"
+        path: /etc/dropbear-initramfs/authorized_keys
+        user: root
+
+    - name: Configure the dropbear port
+      copy:
+        content: 'DROPBEAR_OPTIONS="-p {{ dropbear_port }}"'
+        dest: /etc/dropbear-initramfs/config
+        owner: root
+        group: root
+        mode: 0o600
+
+    - name: Update the initramfs
+      command: update-initramfs -c -k all
+
+    - name: Tell grub where the root is
+      lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX='
+        line: 'GRUB_CMDLINE_LINUX="root=ZFS=rpool/ROOT/{{ zfs_system_root_name }}"'
+
+    - name: Update grub configuration files
+      command: update-grub
+
+    - name: Install grub
+      command: >
+        grub-install \
+        --target=x86_64-efi \
+        --efi-directory=/boot/efi \
+        --bootloader-id=debian \
+        --recheck \
+        --no-floppy
+
+    - name: Create temporary file to contain the hash for mokutil password
+      become: true
+      tempfile:
+        state: file
+        suffix: mokutil_pw
+      register: _mokutil_file
+
+    - name: Write the password to the mokutil hash file
+      become: true
+      copy:
+        content: "{{ mokutil_password }}"
+        dest: "{{ _mokutil_file.path }}"
+        mode: 0o600
+        owner: root
+        group: root
+
+    - name: Import the generated Secure boot key
+      command: mokutil --hash-file "{{ _mokutil_file.path }}" --import /root/mok.der
+      become: true
+
+    - name: Snapshot the filesystems before boot
+      zfs:
+        name: "{{ item }}@install"
+        state: present
+      loop:
+        - rpool/ROOT/{{ zfs_system_root_name }}
+        - bpool/BOOT/{{ zfs_system_root_name }}
+        - rpool/var
