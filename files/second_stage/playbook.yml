@@ -209,6 +209,18 @@
         group: root
         mode: 0o644
 
+    - name: Ensure we have /tmp on a tmpfs
+      file:
+        src: /usr/share/systemd/tmp.mount
+        dest: /etc/systemd/system/tmp.mount
+        state: link
+        mode: 0o644
+
+    - name: Enable the /tmp tmpfs mount service
+      systemd:
+        service: tmp.mount
+        enabled: true
+
     - name: Authorize user for remote-unlock
       authorized_key:
         key: "{{ admin_public_key }}"
