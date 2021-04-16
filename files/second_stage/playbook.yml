@@ -114,23 +114,26 @@
           - shim-signed
         install_recommends: false
 
-    - name: Ensure the en_US.UTF-8 locale exists
+    - name: Ensure the requested locale exists
       locale_gen:
-        name: en_US.UTF-8
+        name: "{{ item }}"
         state: present
+      loop:
+        - en_US.UTF-8
+        - en_GB.UTF-8
 
-    - name: Set default locale to en_US.UTF-8
+    - name: Set default locale to en_GB.UTF-8
       debconf:
         name: locales
         question: locales/default_environment_locale
-        value: en_US.UTF-8
+        value: en_GB.UTF-8
         vtype: select
 
     - name: Configure locales to generate
       debconf:
         name: locales
         question: locales/locales_to_be_generated
-        value: en_US.UTF-8 UTF-8
+        value: en_US.UTF-8 en_GB.UTF-8 UTF-8
         vtype: multiselect
 
     - name: Set timezone area
