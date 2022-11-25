@@ -1,5 +1,6 @@
 ---
-- hosts: external
+- name: Install a new debian system
+  hosts: external
 
   vars:
     ansible_user: user
@@ -63,7 +64,7 @@
       become: true
 
     - name: Ensure zfs modules are loaded
-      modprobe:
+      community.general.modprobe:
         name: zfs
         state: present
       become: true
@@ -81,7 +82,7 @@
       loop: "{{ root_disks }}"
 
     - name: Create efi partition
-      parted:
+      community.general.parted:
         device: /dev/{{ item }}
         number: 1
         state: present
@@ -93,7 +94,7 @@
       loop: "{{ root_disks }}"
 
     - name: Create boot pool partitions
-      parted:
+      community.general.parted:
         device: /dev/{{ item }}
         number: 2
         state: present
@@ -104,7 +105,7 @@
       loop: "{{ root_disks }}"
 
     - name: Create root pool partitions
-      parted:
+      community.general.parted:
         device: /dev/{{ item }}
         number: 3
         state: present
@@ -117,7 +118,7 @@
       setup:
 
     - name: Get all existing zfs pools information
-      zpool_facts:
+      community.general.zpool_facts:
         properties: size
 
     - name: Get all existing zfs pools name
@@ -125,7 +126,7 @@
         zfs_pools_names: "{{ ansible_zfs_pools | map(attribute='name') | list }}"
 
     - name: Create the efi partitions
-      filesystem:
+      community.general.filesystem:
         fstype: vfat
         opts: -F 32 -s 1 -n EFI
         dev: "/dev/disk/by-id/{{ ansible_devices[item].partitions[item + '1'].links.ids[0] }}"
@@ -200,7 +201,7 @@
 
     - name: Create root zfs mountpoints
       become: true
-      zfs:
+      community.general.zfs:
         name: "{{ item }}"
         state: present
         extra_zfs_properties:
@@ -212,7 +213,7 @@
 
     - name: Create distribution specific root mountpoint
       become: true
-      zfs:
+      community.general.zfs:
         name: "rpool/ROOT/{{ zfs_system_root_name }}"
         state: present
         extra_zfs_properties:
@@ -225,7 +226,7 @@
 
     - name: Create distribution specific boot mountpoint
       become: true
-      zfs:
+      community.general.zfs:
         name: "bpool/BOOT/{{ zfs_system_root_name }}"
         state: present
         extra_zfs_properties:
@@ -233,7 +234,7 @@
 
     - name: Create zfs volumes
       become: true
-      zfs:
+      community.general.zfs:
         name: rpool/{{ item.name }}
         state: present
         extra_zfs_properties: "{{ item.properties | default({}) }}"
@@ -280,7 +281,7 @@
       become: true
 
     - name: Mount necessary filesystems
-      mount:
+      ansible.posix.mount:
         src: "/{{ item }}"
         path: /mnt/{{ item }}
         fstype: none
@@ -292,7 +293,7 @@
         - sys
 
     - name: Mount /proc
-      mount:
+      ansible.posix.mount:
         src: "proc"
         path: /mnt/proc
         fstype: proc
@@ -300,7 +301,7 @@
       become: true
 
     - name: Mount tmpfs filesystems
-      mount:
+      ansible.posix.mount:
         src: tmpfs
         path: /mnt/{{ item }}
         fstype: tmpfs
@@ -363,7 +364,7 @@
       debug:
         var: playbook_run.stderr_lines
 
-    - name: fail if the previous playbook failed
+    - name: Fail if the previous playbook failed
       fail:
       when: playbook_run.rc != 0
 

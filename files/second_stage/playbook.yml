@@ -1,5 +1,6 @@
 ---
-- hosts: external
+- name: Second stage of installation
+  hosts: external
 
   vars:
     ansible_user: root
@@ -8,7 +9,7 @@
 
   tasks:
     - name: Mount /boot/efi
-      mount:
+      ansible.posix.mount:
         fstype: vfat
         opts: x-systemd.idle-timeout=1min,x-systemd.automount,noauto
         passno: "1"
@@ -40,7 +41,7 @@
         service: systemd-networkd
         enabled: true
 
-    - name: remove the default sources file
+    - name: Remove the default sources file
       file:
         path: /etc/apt/sources.list
         state: absent
@@ -115,7 +116,7 @@
         install_recommends: false
 
     - name: Ensure the requested locale exists
-      locale_gen:
+      community.general.locale_gen:
         name: "{{ item }}"
         state: present
       loop:
@@ -174,7 +175,7 @@
           - sudo
 
     - name: Set authorized key taken for the admin user
-      authorized_key:
+      ansible.posix.authorized_key:
         user: "{{ admin_username }}"
         state: present
         key: "{{ admin_public_key }}"
@@ -225,7 +226,7 @@
         enabled: true
 
     - name: Authorize user for remote-unlock
-      authorized_key:
+      ansible.posix.authorized_key:
         key: "{{ admin_public_key }}"
         path: /etc/dropbear-initramfs/authorized_keys
         user: root
@@ -280,7 +281,7 @@
       become: true
 
     - name: Snapshot the filesystems before boot
-      zfs:
+      community.general.zfs:
         name: "{{ item }}@install"
         state: present
       loop:
