@@ -18,14 +18,14 @@ Debian system with an encrypted ZFS on root system.
 
 ### Preparing the system
 
-The first step is to setup a live enviornment in which we will be able to start
+The first step is to setup a live environment in which we will be able to start
 the installation.
 
 You will need to disable SecureBoot for the installation.
 We will re-enable it later.
 
 You will need to start by getting a
-[Debian live CD](https://cdimage.debian.org/cdimage/weekly-live-builds/amd64/iso-hybrid/)
+[Debian live CD](https://cdimage.debian.org/cdimage/release/current-live/amd64/iso-hybrid/)
 and boot your system with it.
 
 You will then need to install an ssh server an set it up:

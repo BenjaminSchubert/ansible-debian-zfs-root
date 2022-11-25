@@ -1,2 +1,4 @@
 skip_list:
+  # This is too verbose, builtins are builtins after all
+  - fqcn-builtins
   - no-changed-when

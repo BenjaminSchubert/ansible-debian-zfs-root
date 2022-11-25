@@ -204,11 +204,11 @@
         name: "{{ item }}"
         state: present
         extra_zfs_properties:
-          canmount: off
+          canmount: false
           mountpoint: none
       loop:
-      - rpool/ROOT
-      - bpool/BOOT
+        - rpool/ROOT
+        - bpool/BOOT
 
     - name: Create distribution specific root mountpoint
       become: true
@@ -319,7 +319,8 @@
 
     - name: Create a virtualenv to reuse the same version of ansible
       pip:
-        name: ansible=={{ ansible_version.full }}
+        # FIXME: switch to using ansible-core and a requirements.yml for roles
+        name: ansible
         virtualenv: "{{ temp_path.path }}/venv"
         virtualenv_command: "{{ ansible_python_interpreter }} -m venv"
       become: true
