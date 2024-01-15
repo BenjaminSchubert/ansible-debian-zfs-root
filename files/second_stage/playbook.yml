@@ -108,6 +108,7 @@
           - locales
           - openssh-server
           - sudo
+          - zfs-dkms
           - zfs-initramfs
           - zfs-zed
           - grub-efi-amd64
