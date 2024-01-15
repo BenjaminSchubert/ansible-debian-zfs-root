@@ -6,7 +6,7 @@
     ansible_user: user
     ansible_ssh_pass: live
     ansible_python_interpreter: /usr/bin/{{ python_version }}
-    python_version: python3.9
+    python_version: python3.11
     debian_version: "{{ ansible_distribution_release }}"
     zfs_system_root_name: "{{ ansible_distribution | lower }}-{{ debian_version }}"
 
@@ -196,8 +196,8 @@
               {{ ansible_devices[disk].partitions[disk + "3"].links.ids[0] }}
             {% endfor %}
         responses:
-          Enter passphrase: "{{ zfs_pool_password }}"
-          Re-enter passphrase: "{{ zfs_pool_password }}"
+          Enter new passphrase: "{{ zfs_pool_password }}"
+          Re-enter new passphrase: "{{ zfs_pool_password }}"
 
     - name: Create root zfs mountpoints
       become: true
@@ -268,9 +268,7 @@
     - name: Deboostrap the system
       command: |
         debootstrap
-        --include python3
-        --include python3-apt
-        --include lsb-release
+        --include lsb-release,python3,python3-apt
         {{ debian_version }}
         /mnt
         {% if apt_proxy_url is defined %}
