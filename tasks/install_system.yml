@@ -1,0 +1,230 @@
+---
+- name: Wipe the disks
+  command: sgdisk --zap-all /dev/{{ item }}
+  loop: "{{ root_disks }}"
+
+- name: Create efi partition
+  community.general.parted:
+    device: /dev/{{ item }}
+    number: 1
+    state: present
+    part_end: 2GiB
+    label: gpt
+    flags:
+      - esp
+  loop: "{{ root_disks }}"
+
+- name: Create boot pool partitions
+  community.general.parted:
+    device: /dev/{{ item }}
+    number: 2
+    state: present
+    part_start: 2GiB
+    part_end: 5GiB
+    label: gpt
+  loop: "{{ root_disks }}"
+
+- name: Create root pool partitions
+  community.general.parted:
+    device: /dev/{{ item }}
+    number: 3
+    state: present
+    part_start: 5GiB
+    label: gpt
+  loop: "{{ root_disks }}"
+
+- name: Update devices facts
+  setup:
+
+- name: Get all existing zfs pools information
+  community.general.zpool_facts:
+    properties: size
+
+- name: Get all existing zfs pools name
+  set_fact:
+    zfs_pools_names: "{{ ansible_zfs_pools | map(attribute='name') | list }}"
+
+- name: Create the efi partitions
+  community.general.filesystem:
+    fstype: vfat
+    opts: -F 32 -s 1 -n EFI
+    dev: "/dev/disk/by-id/{{ ansible_devices[item].partitions[item + '1'].links.ids[0] }}"
+  loop: "{{ root_disks }}"
+
+- name: Create the zfs bpool pool
+  when: "'bpool' not in zfs_pools_names"
+  command: >
+    zpool create
+      -d
+      -f
+      -o ashift=12
+      -o cachefile=none
+      -o feature@async_destroy=enabled
+      -o feature@bookmarks=enabled
+      -o feature@embedded_data=enabled
+      -o feature@empty_bpobj=enabled
+      -o feature@enabled_txg=enabled
+      -o feature@extensible_dataset=enabled
+      -o feature@filesystem_limits=enabled
+      -o feature@hole_birth=enabled
+      -o feature@large_blocks=enabled
+      -o feature@lz4_compress=enabled
+      -o feature@spacemap_histogram=enabled
+      -o feature@zpool_checkpoint=enabled
+      -O acltype=posixacl
+      -O canmount=off
+      -O compression=lz4
+      -O devices=off
+      -O normalization=formD
+      -O relatime=on
+      -O xattr=sa
+      -O mountpoint=/boot
+      -R /mnt
+      bpool
+      {{ pool_mode | default() }}
+      {% for disk in root_disks %}
+        {{ ansible_devices[disk].partitions[disk + "2"].links.ids[0] }}
+      {% endfor %}
+
+- name: Create the zfs rpool pool
+  when: "'rpool' not in zfs_pools_names"
+  expect:
+    command: >
+      zpool create
+        -f
+        -o cachefile=none
+        -O encryption=aes-256-gcm
+        -O keylocation=prompt
+        -O keyformat=passphrase
+        -o ashift=12
+        -O acltype=posixacl
+        -O canmount=off
+        -O compression=lz4
+        -O dnodesize=auto
+        -O normalization=formD
+        -O relatime=on
+        -O xattr=sa
+        -O mountpoint=/
+        -R /mnt
+        rpool
+        {{ pool_mode | default() }}
+        {% for disk in root_disks %}
+          {{ ansible_devices[disk].partitions[disk + "3"].links.ids[0] }}
+        {% endfor %}
+    responses:
+      Enter new passphrase: "{{ zfs_pool_password }}"
+      Re-enter new passphrase: "{{ zfs_pool_password }}"
+
+- name: Create root zfs mountpoints
+  community.general.zfs:
+    name: "{{ item }}"
+    state: present
+    extra_zfs_properties:
+      canmount: false
+      mountpoint: none
+  loop:
+    - rpool/ROOT
+    - bpool/BOOT
+
+- name: Create distribution specific root mountpoint
+  community.general.zfs:
+    name: "rpool/ROOT/{{ zfs_system_root_name }}"
+    state: present
+    extra_zfs_properties:
+      canmount: noauto
+      mountpoint: /
+
+- name: Mount the root filesystem
+  command: zfs mount rpool/ROOT/{{ zfs_system_root_name }}
+
+- name: Create distribution specific boot mountpoint
+  community.general.zfs:
+    name: "bpool/BOOT/{{ zfs_system_root_name }}"
+    state: present
+    extra_zfs_properties:
+      mountpoint: /boot
+
+- name: Create zfs volumes
+  community.general.zfs:
+    name: rpool/{{ item.name }}
+    state: present
+    extra_zfs_properties: "{{ item.properties | default({}) }}"
+  loop:
+    - name: home
+    - name: home/root
+      properties:
+        mountpoint: /root
+    - name: var
+      properties:
+        canmount: false
+    - name: var/lib
+      properties:
+        canmount: false
+    - name: var/log
+    - name: var/spool
+    - name: var/cache
+      properties:
+        com.sun:auto-snapshot: false
+    - name: var/tmp
+      properties:
+        com.sun:auto-snapshot: false
+
+- name: Ensure /mnt/var/tmp has the right permissions
+  file:
+    name: /mnt/var/tmp
+    state: directory
+    mode: "0o1777"
+
+- name: Deboostrap the system
+  command: |
+    debootstrap
+    --include lsb-release,python3,python3-apt
+    {{ ansible_distribution_release }}
+    /mnt
+    {% if apt_proxy_url is defined %}
+    {{ apt_proxy_url }}/debian {{ ansible_distribution_release }} main contrib
+    {% endif %}
+  args:
+    creates: /mnt/etc
+
+- name: Mount /mnt/sys
+  ansible.posix.mount:
+    src: sys
+    path: /mnt/sys
+    fstype: sysfs
+    opts: nosuid,noexec,nodev,ro
+    state: mounted
+
+- name: Mount /mnt/sys/firmware/efi/efivars
+  ansible.posix.mount:
+    src: efivars
+    path: /mnt/sys/firmware/efi/efivars
+    fstype: efivarfs
+    opts: nosuid,noexec,nodev
+    state: mounted
+
+- name: Mount /mnt/dev
+  ansible.posix.mount:
+    src: dev
+    path: /mnt/dev
+    fstype: devtmpfs
+    opts: mode=755,nosuid
+    state: mounted
+
+- name: Mount /mnt/proc
+  ansible.posix.mount:
+    src: proc
+    path: /mnt/proc
+    fstype: proc
+    opts: nosuid,noexec,nodev
+    state: mounted
+
+- name: Mount tmpfs filesystems
+  ansible.posix.mount:
+    src: tmpfs
+    path: /mnt/{{ item }}
+    fstype: tmpfs
+    state: mounted
+  loop:
+    - run
+    - tmp

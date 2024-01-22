@@ -3,378 +3,53 @@
   hosts: external
 
   vars:
-    ansible_user: user
-    ansible_ssh_pass: live
-    ansible_python_interpreter: /usr/bin/{{ python_version }}
-    python_version: python3.11
-    debian_version: "{{ ansible_distribution_release }}"
-    zfs_system_root_name: "{{ ansible_distribution | lower }}-{{ debian_version }}"
+    zfs_system_root_name: "{{ ansible_distribution | lower }}-{{ ansible_distribution_release }}"
+
+  handlers:
+    - name: Restart sshd
+      systemd:
+        name: sshd
+        state: restarted
 
   tasks:
     - name: Ensure the debian version is defined
       assert:
         that:
-          - debian_version is defined
-          - debian_version != "n/a"
+          - ansible_distribution_release is defined
+          - ansible_distribution_release != "n/a"
 
-    - name: Setup apt proxy
-      template:
-        src: apt-proxy.j2
-        dest: /etc/apt/apt.conf.d/80-use-proxy
-        owner: root
-        group: root
-        mode: "0o644"
-      become: true
-      when: apt_proxy_url is defined
+    - name: Setup the live environment
+      ansible.builtin.import_tasks: tasks/setup_live_environment.yml
 
-    - name: Remove default apt lists
-      file:
-        name: /etc/apt/sources.list
-        state: absent
-      become: true
+    - name: Install the system
+      ansible.builtin.import_tasks: tasks/install_system.yml
 
-    - name: Enable contrib repositories
-      apt_repository:
-        repo: deb http://deb.debian.org/debian {{ ansible_distribution_release }} main contrib
-        filename: debian
-        state: present
-      become: true
 
-    - name: Ensure all packages are up to date
-      apt:
-        upgrade: safe
-        force_apt_get: true
-        autoclean: true
-        autoremove: true
-        update_cache: true
-      become: true
+- name: Install a new debian system
+  hosts: external
 
-    - name: Install required packages
-      apt:
-        name:
-          - ansible
-          - debootstrap
-          - dosfstools
-          - gdisk
-          - mokutil
-          - parted
-          - "python3-pexpect"
-          - "{{ python_version }}-venv"
-          - zfs-dkms
-      become: true
+  vars:
+    ansible_port: 8922
+    zfs_system_root_name: "{{ ansible_distribution | lower }}-{{ ansible_distribution_release }}"
 
-    - name: Ensure zfs modules are loaded
-      community.general.modprobe:
-        name: zfs
-        state: present
-      become: true
+  tasks:
+    - name: Setup the system
+      ansible.builtin.import_tasks: tasks/setup_system.yml
 
-    # This needs to be done after loading the zfs module
-    # otherwise multiple services will fail
-    - name: Install zfs utils
-      apt:
-        name: zfsutils-linux
-      become: true
 
-    - name: Wipe the disks
-      command: sgdisk --zap-all /dev/{{ item }}
-      become: true
-      loop: "{{ root_disks }}"
+- name: Cleanup post installation
+  hosts: external
 
-    - name: Create efi partition
-      community.general.parted:
-        device: /dev/{{ item }}
-        number: 1
-        state: present
-        part_end: 2GiB
-        label: gpt
-        flags:
-          - esp
-      become: true
-      loop: "{{ root_disks }}"
-
-    - name: Create boot pool partitions
-      community.general.parted:
-        device: /dev/{{ item }}
-        number: 2
-        state: present
-        part_start: 2GiB
-        part_end: 5GiB
-        label: gpt
-      become: true
-      loop: "{{ root_disks }}"
-
-    - name: Create root pool partitions
-      community.general.parted:
-        device: /dev/{{ item }}
-        number: 3
-        state: present
-        part_start: 5GiB
-        label: gpt
-      become: true
-      loop: "{{ root_disks }}"
-
-    - name: Update devices facts
-      setup:
-
-    - name: Get all existing zfs pools information
-      community.general.zpool_facts:
-        properties: size
-
-    - name: Get all existing zfs pools name
-      set_fact:
-        zfs_pools_names: "{{ ansible_zfs_pools | map(attribute='name') | list }}"
-
-    - name: Create the efi partitions
-      community.general.filesystem:
-        fstype: vfat
-        opts: -F 32 -s 1 -n EFI
-        dev: "/dev/disk/by-id/{{ ansible_devices[item].partitions[item + '1'].links.ids[0] }}"
-      become: true
-      loop: "{{ root_disks }}"
-
-    - name: Create the zfs bpool pool
-      when: "'bpool' not in zfs_pools_names"
-      become: true
-      command: >
-        zpool create
-          -d
-          -f
-          -o ashift=12
-          -o cachefile=none
-          -o feature@async_destroy=enabled
-          -o feature@bookmarks=enabled
-          -o feature@embedded_data=enabled
-          -o feature@empty_bpobj=enabled
-          -o feature@enabled_txg=enabled
-          -o feature@extensible_dataset=enabled
-          -o feature@filesystem_limits=enabled
-          -o feature@hole_birth=enabled
-          -o feature@large_blocks=enabled
-          -o feature@lz4_compress=enabled
-          -o feature@spacemap_histogram=enabled
-          -o feature@zpool_checkpoint=enabled
-          -O acltype=posixacl
-          -O canmount=off
-          -O compression=lz4
-          -O devices=off
-          -O normalization=formD
-          -O relatime=on
-          -O xattr=sa
-          -O mountpoint=/boot
-          -R /mnt
-          bpool
-          {{ pool_mode | default() }}
-          {% for disk in root_disks %}
-            {{ ansible_devices[disk].partitions[disk + "2"].links.ids[0] }}
-          {% endfor %}
-
-    - name: Create the zfs rpool pool
-      when: "'rpool' not in zfs_pools_names"
-      become: true
-      expect:
-        command: >
-          zpool create
-            -f
-            -o cachefile=none
-            -O encryption=aes-256-gcm
-            -O keylocation=prompt
-            -O keyformat=passphrase
-            -o ashift=12
-            -O acltype=posixacl
-            -O canmount=off
-            -O compression=lz4
-            -O dnodesize=auto
-            -O normalization=formD
-            -O relatime=on
-            -O xattr=sa
-            -O mountpoint=/
-            -R /mnt
-            rpool
-            {{ pool_mode | default() }}
-            {% for disk in root_disks %}
-              {{ ansible_devices[disk].partitions[disk + "3"].links.ids[0] }}
-            {% endfor %}
-        responses:
-          Enter new passphrase: "{{ zfs_pool_password }}"
-          Re-enter new passphrase: "{{ zfs_pool_password }}"
-
-    - name: Create root zfs mountpoints
-      become: true
-      community.general.zfs:
-        name: "{{ item }}"
-        state: present
-        extra_zfs_properties:
-          canmount: false
-          mountpoint: none
-      loop:
-        - rpool/ROOT
-        - bpool/BOOT
-
-    - name: Create distribution specific root mountpoint
-      become: true
-      community.general.zfs:
-        name: "rpool/ROOT/{{ zfs_system_root_name }}"
-        state: present
-        extra_zfs_properties:
-          canmount: noauto
-          mountpoint: /
-
-    - name: Mount the root filesystem
-      command: zfs mount rpool/ROOT/{{ zfs_system_root_name }}
-      become: true
-
-    - name: Create distribution specific boot mountpoint
-      become: true
-      community.general.zfs:
-        name: "bpool/BOOT/{{ zfs_system_root_name }}"
-        state: present
-        extra_zfs_properties:
-          mountpoint: /boot
-
-    - name: Create zfs volumes
-      become: true
-      community.general.zfs:
-        name: rpool/{{ item.name }}
-        state: present
-        extra_zfs_properties: "{{ item.properties | default({}) }}"
-      loop:
-        - name: home
-        - name: home/root
-          properties:
-            mountpoint: /root
-        - name: var
-          properties:
-            canmount: false
-        - name: var/lib
-          properties:
-            canmount: false
-        - name: var/log
-        - name: var/spool
-        - name: var/cache
-          properties:
-            com.sun:auto-snapshot: false
-        - name: var/tmp
-          properties:
-            com.sun:auto-snapshot: false
-
-    - name: Ensure /mnt/var/tmp has the right permissions
-      file:
-        name: /mnt/var/tmp
-        state: directory
-        mode: "0o1777"
-      become: true
-
-    - name: Deboostrap the system
-      command: |
-        debootstrap
-        --include lsb-release,python3,python3-apt
-        {{ debian_version }}
-        /mnt
-        {% if apt_proxy_url is defined %}
-        {{ apt_proxy_url }}/debian {{ debian_version }} main contrib
-        {% endif %}
-      args:
-        creates: /mnt/etc
-      become: true
-
-    - name: Mount necessary filesystems
-      ansible.posix.mount:
-        src: "/{{ item }}"
-        path: /mnt/{{ item }}
-        fstype: none
-        opts: rbind
-        state: mounted
-      become: true
-      loop:
-        - dev
-        - sys
-
-    - name: Mount /proc
-      ansible.posix.mount:
-        src: "proc"
-        path: /mnt/proc
-        fstype: proc
-        state: mounted
-      become: true
-
-    - name: Mount tmpfs filesystems
-      ansible.posix.mount:
-        src: tmpfs
-        path: /mnt/{{ item }}
-        fstype: tmpfs
-        state: mounted
-      become: true
-      loop:
-        - run
-        - tmp
-
-    - name: Create a temporary directory to work in
-      tempfile:
-        prefix: ansible-setup
-        state: directory
-      become: true
-      register: temp_path
-
-    - name: Create a virtualenv to reuse the same version of ansible
-      pip:
-        # FIXME: switch to using ansible-core and a requirements.yml for roles
-        name: ansible
-        virtualenv: "{{ temp_path.path }}/venv"
-        virtualenv_command: "{{ ansible_python_interpreter }} -m venv"
-      become: true
-
-    - name: Copy second stage playbook
-      copy:
-        src: second_stage
-        dest: "{{ temp_path.path }}"
-        mode: "0o644"
-        directory_mode: "0o755"
-      become: true
-
-    - name: Copy ansible.cfg
-      copy:
-        src: ansible.cfg
-        dest: "{{ temp_path.path }}/second_stage/ansible.cfg"
-        mode: "0o644"
-      become: true
-
-    - name: Setup inventory
-      template:
-        src: second_stage_inventory.yml.j2
-        dest: "{{ temp_path.path }}/second_stage/inventory.yml"
-        mode: "0o644"
-      become: true
-
-    - name: Run the second stage playbook
-      command: "{{ temp_path.path }}/venv/bin/ansible-playbook --diff playbook.yml"
-      args:
-        chdir: "{{ temp_path.path }}/second_stage"
-      become: true
-      register: playbook_run
-      ignore_errors: true
-
-    - name: Show second stage stdout
-      debug:
-        var: playbook_run.stdout_lines
-
-    - name: Show second stage stderr
-      debug:
-        var: playbook_run.stderr_lines
-
-    - name: Fail if the previous playbook failed
-      fail:
-      when: playbook_run.rc != 0
-
+  tasks:
     - name: Unmount filesystems
-      command: umount -Rfl /mnt/{{ item }}
-      become: true
+      command: umount /mnt/{{ item }}
       loop:
         - boot/efi
         - dev
         - proc
         - run
         - tmp
+        - sys/firmware/efi/efivars
         - sys
 
     # FIXME: Running it with become fails?

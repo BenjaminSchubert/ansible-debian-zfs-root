@@ -4,6 +4,11 @@ external:
     # The ip address (or hostname) of the host you want to install
     #
     ${TARGET_SERVER_IP_ADDRESS_HERE}:
+      ansible_user: root  # Required, we need to connect as root
+
+      # The password used to connect as the root account to the live system
+      ansible_ssh_pass: live
+
       # The list of disks that you want to use for the root partition, as a
       # path from /dev (e.g for /dev/sda, use 'sda')
       #
