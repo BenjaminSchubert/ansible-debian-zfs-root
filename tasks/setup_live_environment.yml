@@ -1,23 +1,6 @@
 ---
-- name: Setup apt proxy
-  template:
-    src: apt-proxy.j2
-    dest: /etc/apt/apt.conf.d/80-use-proxy
-    owner: root
-    group: root
-    mode: "0o644"
-  when: apt_proxy_url is defined
-
-- name: Remove default apt lists
-  file:
-    name: /etc/apt/sources.list
-    state: absent
-
-- name: Enable contrib repositories
-  apt_repository:
-    repo: deb http://deb.debian.org/debian {{ ansible_distribution_release }} main contrib
-    filename: debian
-    state: present
+- name: Setup apt
+  import_tasks: tasks/_setup_apt.yml
 
 - name: Ensure all packages are up to date
   apt:
@@ -36,7 +19,11 @@
       - mokutil
       - parted
       - python3-pexpect
-      - zfs-dkms
+
+- name: Install zfs packages from backports
+  apt:
+    name: zfs-dkms
+    default_release: stable-backports
 
 - name: Ensure zfs modules are loaded
   community.general.modprobe:
@@ -48,6 +35,7 @@
 - name: Install zfs utils
   apt:
     name: zfsutils-linux
+    default_release: stable-backports
 
 - name: Configure sshd to allow connecting directly inside the chroot
   notify: Restart sshd

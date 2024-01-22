@@ -1,0 +1,22 @@
+---
+- name: Setup apt proxy
+  template:
+    src: apt-proxy.j2
+    dest: /etc/apt/apt.conf.d/80-use-proxy
+    owner: root
+    group: root
+    mode: "0o644"
+  when: apt_proxy_url is defined
+
+- name: Remove default apt lists
+  file:
+    name: /etc/apt/sources.list
+    state: absent
+
+- name: Setup apt sources
+  template:
+    src: sources.list.j2
+    dest: "/etc/apt/sources.list.d/{{ ansible_distribution_release }}.list"
+    owner: root
+    group: root
+    mode: "0o644"

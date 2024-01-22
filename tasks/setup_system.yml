@@ -32,18 +32,8 @@
     service: systemd-networkd
     enabled: true
 
-- name: Remove the default sources file
-  file:
-    path: /etc/apt/sources.list
-    state: absent
-
-- name: Setup apt sources
-  template:
-    src: sources.list.j2
-    dest: "/etc/apt/sources.list.d/{{ ansible_distribution_release }}.list"
-    owner: root
-    group: root
-    mode: "0o644"
+- name: Setup apt
+  import_tasks: tasks/_setup_apt.yml
 
 - name: Ensure all packages are up to date
   apt:
@@ -98,13 +88,18 @@
       - locales
       - openssh-server
       - sudo
-      - zfs-dkms
-      - zfs-initramfs
-      - zfs-zed
       - grub-efi-amd64
       - grub-efi-amd64-signed
       - shim-signed
     install_recommends: false
+
+- name: Install zfs packages from backports
+  apt:
+    name:
+      - zfs-dkms
+      - zfs-initramfs
+      - zfs-zed
+    default_release: stable-backports
 
 - name: Ensure the requested locale exists
   community.general.locale_gen:
