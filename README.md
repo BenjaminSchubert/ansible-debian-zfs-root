@@ -30,10 +30,13 @@ and boot your system with it.
 
 You will then need to install an ssh server an set it up:
 
-```
+```bash
+sudo passwd  # Note the password, you will need it later
 sudo apt update
 sudo apt install openssh-server
-sudo systemctl start sshd
+# Allow root to login with password
+sed -i 's/^#\{0,1\}PermitRootLogin\ .*$/PermitRootLogin\ yes/' /etc/ssh/sshd_config
+sudo systemctl restart sshd
 ```
 
 And gather the connection information:
