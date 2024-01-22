@@ -23,7 +23,7 @@
         dest: /etc/apt/apt.conf.d/80-use-proxy
         owner: root
         group: root
-        mode: 0o644
+        mode: "0o644"
       become: true
       when: apt_proxy_url is defined
 
@@ -262,7 +262,7 @@
       file:
         name: /mnt/var/tmp
         state: directory
-        mode: 0o1777
+        mode: "0o1777"
       become: true
 
     - name: Deboostrap the system
@@ -328,22 +328,22 @@
       copy:
         src: second_stage
         dest: "{{ temp_path.path }}"
-        mode: 0o644
-        directory_mode: 0o755
+        mode: "0o644"
+        directory_mode: "0o755"
       become: true
 
     - name: Copy ansible.cfg
       copy:
         src: ansible.cfg
         dest: "{{ temp_path.path }}/second_stage/ansible.cfg"
-        mode: 0o644
+        mode: "0o644"
       become: true
 
     - name: Setup inventory
       template:
         src: second_stage_inventory.yml.j2
         dest: "{{ temp_path.path }}/second_stage/inventory.yml"
-        mode: 0o644
+        mode: "0o644"
       become: true
 
     - name: Run the second stage playbook
