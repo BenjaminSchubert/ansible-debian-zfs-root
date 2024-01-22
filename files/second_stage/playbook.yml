@@ -21,7 +21,7 @@
       copy:
         dest: /etc/hostname
         content: "{{ fqdn.split('.')[0] }}"
-        mode: 0o644
+        mode: "0o644"
 
     - name: Set the hostname and fqdn in etc/hosts
       lineinfile:
@@ -34,7 +34,7 @@
       template:
         src: network.j2
         dest: /etc/systemd/network/lan0.network
-        mode: 0o644
+        mode: "0o644"
 
     - name: Enable systemd-networkd
       systemd:
@@ -52,7 +52,7 @@
         dest: "/etc/apt/sources.list.d/{{ debian_version }}.list"
         owner: root
         group: root
-        mode: 0o644
+        mode: "0o644"
 
     - name: Ensure all packages are up to date
       apt:
@@ -82,7 +82,7 @@
       copy:
         dest: /etc/dkms/zfs.conf
         content: REMAKE_INITRD=yes
-        mode: 0o644
+        mode: "0o644"
       become: true
 
     - name: Create key to sign kernel modules
@@ -202,7 +202,7 @@
         state: directory
         owner: root
         group: root
-        mode: 0o755
+        mode: "0o755"
 
     - name: Override the zfs-import-scan service to not check for zpool.cache
       copy:
@@ -212,14 +212,14 @@
         dest: /etc/systemd/system/zfs-import-scan.service.d/run-even-if-cache-exists.conf
         owner: root
         group: root
-        mode: 0o644
+        mode: "0o644"
 
     - name: Ensure we have /tmp on a tmpfs
       file:
         src: /usr/share/systemd/tmp.mount
         dest: /etc/systemd/system/tmp.mount
         state: link
-        mode: 0o644
+        mode: "0o644"
 
     - name: Enable the /tmp tmpfs mount service
       systemd:
@@ -238,7 +238,7 @@
         dest: /etc/dropbear-initramfs/config
         owner: root
         group: root
-        mode: 0o600
+        mode: "0o600"
 
     - name: Update the initramfs
       command: update-initramfs -c -k all
@@ -273,7 +273,7 @@
       copy:
         content: "{{ mokutil_password }}"
         dest: "{{ _mokutil_file.path }}"
-        mode: 0o600
+        mode: "0o600"
         owner: root
         group: root
 
