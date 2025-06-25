@@ -9,7 +9,7 @@ Debian system with an encrypted ZFS on root system.
 - ⚠️ The disk(s) can be erased. ⚠️
 - You want encryption.
 - The system supports UEFI.
-- You want Debian Buster (will not work _before_ Buster. Might work on later versions).
+- You want Debian Trixie (will not work _before_ Trixie. Might work on later versions).
 - You have ansible >2.10 installed on your system.
 - You have a wired connection on your machine.
 
