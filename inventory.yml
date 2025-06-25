@@ -75,3 +75,6 @@ external:
       # Use `mkpasswd --method=sha512` to generate one otherwise.
       #
       mokutil_password: "{{ admin_password }}"
+
+      # Whether to enable backports to install ZFS or not
+      enable_backports: false

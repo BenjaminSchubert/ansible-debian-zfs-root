@@ -16,14 +16,15 @@
       - debootstrap
       - dosfstools
       - gdisk
+      - linux-headers-{{ ansible_facts.kernel }}
       - mokutil
       - parted
       - python3-pexpect
 
-- name: Install zfs packages from backports
+- name: Install zfs packages
   apt:
     name: zfs-dkms
-    default_release: stable-backports
+    default_release: "{{ enable_backports | ternary(ansible_distribution_release + '-backports', omit) }}"
 
 - name: Ensure zfs modules are loaded
   community.general.modprobe:
@@ -35,7 +36,7 @@
 - name: Install zfs utils
   apt:
     name: zfsutils-linux
-    default_release: stable-backports
+    default_release: "{{ enable_backports | ternary(ansible_distribution_release + '-backports', omit) }}"
 
 - name: Configure sshd to allow connecting directly inside the chroot
   notify: Restart sshd

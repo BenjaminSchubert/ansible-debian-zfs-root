@@ -36,11 +36,16 @@
     - name: Setup the system
       ansible.builtin.import_tasks: tasks/setup_system.yml
 
-
 - name: Cleanup post installation
   hosts: external
 
   tasks:
+    - name: Kill lingering ssh session
+      delegate_to: 127.0.0.1
+      ansible.builtin.command:
+        cmd: ssh -O stop root@{{ inventory_hostname }} -p 8922
+      changed_when: true
+
     - name: Unmount filesystems
       command: umount /mnt/{{ item }}
       loop:
@@ -52,6 +57,6 @@
         - sys/firmware/efi/efivars
         - sys
 
-    # FIXME: Running it with become fails?
     - name: Export zfs filesystems
-      command: sudo zpool export -a
+      become: true
+      command: zpool export -a

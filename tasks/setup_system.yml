@@ -51,32 +51,11 @@
     state: present
     install_recommends: false
 
-- name: Sign kernel modules on install
-  lineinfile:
-    path: /etc/dkms/framework.conf
-    regexp: '^#\s(sign_tool.*)'
-    line: '\1'
-    backrefs: true
-    state: present
-
 - name: Ensure ZFS update rebuilds all initramfs
   copy:
     dest: /etc/dkms/zfs.conf
     content: REMAKE_INITRD=yes
     mode: "0o644"
-
-- name: Create key to sign kernel modules
-  command: |
-    openssl \
-      req \
-      -nodes \
-      -new -x509 -newkey rsa:2048 \
-      -keyout /root/mok.priv \
-      -outform DER -out /root/mok.der \
-      -days 36500 \
-      -subj "/CN={{ fqdn }} module signing key/"
-  args:
-    creates: /root/mok.priv
 
 - name: Install required packages
   apt:
@@ -93,13 +72,13 @@
       - shim-signed
     install_recommends: false
 
-- name: Install zfs packages from backports
+- name: Install zfs packages
   apt:
     name:
       - zfs-dkms
       - zfs-initramfs
       - zfs-zed
-    default_release: stable-backports
+    default_release: "{{ enable_backports | ternary(ansible_distribution_release + '-backports', omit) }}"
 
 - name: Ensure the requested locale exists
   community.general.locale_gen:
@@ -200,13 +179,6 @@
     group: root
     mode: "0o644"
 
-- name: Ensure we have /tmp on a tmpfs
-  file:
-    src: /usr/share/systemd/tmp.mount
-    dest: /etc/systemd/system/tmp.mount
-    state: link
-    mode: "0o644"
-
 - name: Enable the /tmp tmpfs mount service
   systemd:
     service: tmp.mount
@@ -239,13 +211,7 @@
   command: update-grub
 
 - name: Install grub
-  command: >
-    grub-install \
-    --target=x86_64-efi \
-    --efi-directory=/boot/efi \
-    --bootloader-id=debian \
-    --recheck \
-    --no-floppy
+  command: grub-install
 
 - name: Create temporary file to contain the hash for mokutil password
   tempfile:
@@ -262,7 +228,7 @@
     group: root
 
 - name: Import the generated Secure boot key
-  command: mokutil --hash-file "{{ _mokutil_file.path }}" --import /root/mok.der
+  command: mokutil --hash-file "{{ _mokutil_file.path }}" --import /var/lib/dkms/mok.pub
 
 - name: Snapshot the filesystems before boot
   community.general.zfs:
