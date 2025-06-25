@@ -1,6 +1,6 @@
 ---
 - name: Wipe the disks
-  command: sgdisk --zap-all /dev/{{ item }}
+  ansible.builtin.command: sgdisk --zap-all /dev/{{ item }}
   loop: "{{ root_disks }}"
 
 - name: Create efi partition
@@ -34,14 +34,14 @@
   loop: "{{ root_disks }}"
 
 - name: Update devices facts
-  setup:
+  ansible.builtin.setup:
 
 - name: Get all existing zfs pools information
   community.general.zpool_facts:
     properties: size
 
 - name: Get all existing zfs pools name
-  set_fact:
+  ansible.builtin.set_fact:
     zfs_pools_names: "{{ ansible_zfs_pools | map(attribute='name') | list }}"
 
 - name: Create the efi partitions
@@ -53,7 +53,7 @@
 
 - name: Create the zfs bpool pool
   when: "'bpool' not in zfs_pools_names"
-  command: >
+  ansible.builtin.command: >
     zpool create
       -d
       -f
@@ -88,7 +88,7 @@
 
 - name: Create the zfs rpool pool
   when: "'rpool' not in zfs_pools_names"
-  expect:
+  ansible.builtin.expect:
     command: >
       zpool create
         -f
@@ -135,7 +135,7 @@
       mountpoint: /
 
 - name: Mount the root filesystem
-  command: zfs mount rpool/ROOT/{{ zfs_system_root_name }}
+  ansible.builtin.command: zfs mount rpool/ROOT/{{ zfs_system_root_name }}
 
 - name: Create distribution specific boot mountpoint
   community.general.zfs:
@@ -170,13 +170,13 @@
         com.sun:auto-snapshot: false
 
 - name: Ensure /mnt/var/tmp has the right permissions
-  file:
+  ansible.builtin.file:
     name: /mnt/var/tmp
     state: directory
     mode: "0o1777"
 
 - name: Deboostrap the system
-  command: |
+  ansible.builtin.command: |
     debootstrap
     --include lsb-release,python3,python3-apt
     {{ ansible_distribution_release }}

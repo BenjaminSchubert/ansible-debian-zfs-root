@@ -1,9 +1,9 @@
 ---
 - name: Setup apt
-  import_tasks: tasks/_setup_apt.yml
+  ansible.builtin.import_tasks: tasks/_setup_apt.yml
 
 - name: Ensure all packages are up to date
-  apt:
+  ansible.builtin.apt:
     upgrade: safe
     force_apt_get: true
     autoclean: true
@@ -11,7 +11,7 @@
     update_cache: true
 
 - name: Install required packages
-  apt:
+  ansible.builtin.apt:
     name:
       - debootstrap
       - dosfstools
@@ -22,7 +22,7 @@
       - python3-pexpect
 
 - name: Install zfs packages
-  apt:
+  ansible.builtin.apt:
     name: zfs-dkms
     default_release: "{{ enable_backports | ternary(ansible_distribution_release + '-backports', omit) }}"
 
@@ -34,7 +34,7 @@
 # This needs to be done after loading the zfs module
 # otherwise multiple services will fail
 - name: Install zfs utils
-  apt:
+  ansible.builtin.apt:
     name: zfsutils-linux
     default_release: "{{ enable_backports | ternary(ansible_distribution_release + '-backports', omit) }}"
 
@@ -49,4 +49,4 @@
     validate: /usr/sbin/sshd -T -C lport=8922 -f %s
 
 - name: Force handlers to run
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers

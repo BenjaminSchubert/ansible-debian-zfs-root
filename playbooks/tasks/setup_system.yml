@@ -9,34 +9,34 @@
     state: mounted
 
 - name: Set the hostname
-  copy:
+  ansible.builtin.copy:
     dest: /etc/hostname
     content: "{{ fqdn.split('.')[0] }}"
     mode: "0o644"
 
 - name: Set the hostname and fqdn in etc/hosts
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/hosts
     regexp: '^127.0.1.1'
     insertafter: '^127.0.0.1'
     line: 127.0.1.1 {{ fqdn }} {{ fqdn.split(".")[0] }}
 
 - name: Create the network config file
-  template:
+  ansible.builtin.template:
     src: network.j2
     dest: /etc/systemd/network/lan.network
     mode: "0o644"
 
 - name: Enable systemd-networkd
-  systemd:
+  ansible.builtin.systemd:
     service: systemd-networkd
     enabled: true
 
 - name: Setup apt
-  import_tasks: tasks/_setup_apt.yml
+  ansible.builtin.import_tasks: tasks/_setup_apt.yml
 
 - name: Ensure all packages are up to date
-  apt:
+  ansible.builtin.apt:
     upgrade: safe
     force_apt_get: true
     autoclean: true
@@ -44,7 +44,7 @@
     update_cache: true
 
 - name: Install kernel drivers utilities
-  apt:
+  ansible.builtin.apt:
     name:
       - dkms
       - openssl
@@ -52,13 +52,13 @@
     install_recommends: false
 
 - name: Ensure ZFS update rebuilds all initramfs
-  copy:
+  ansible.builtin.copy:
     dest: /etc/dkms/zfs.conf
     content: REMAKE_INITRD=yes
     mode: "0o644"
 
 - name: Install required packages
-  apt:
+  ansible.builtin.apt:
     name:
       - console-setup
       - dropbear-initramfs
@@ -73,7 +73,7 @@
     install_recommends: false
 
 - name: Install zfs packages
-  apt:
+  ansible.builtin.apt:
     name:
       - zfs-dkms
       - zfs-initramfs
@@ -89,49 +89,49 @@
     - en_GB.UTF-8
 
 - name: Set default locale to en_GB.UTF-8
-  debconf:
+  ansible.builtin.debconf:
     name: locales
     question: locales/default_environment_locale
     value: en_GB.UTF-8
     vtype: select
 
 - name: Configure locales to generate
-  debconf:
+  ansible.builtin.debconf:
     name: locales
     question: locales/locales_to_be_generated
     value: en_US.UTF-8 en_GB.UTF-8 UTF-8
     vtype: multiselect
 
 - name: Set timezone area
-  debconf:
+  ansible.builtin.debconf:
     name: tzdata
     question: tzdata/Areas
     value: Europe
     vtype: select
 
 - name: Set timezone city
-  debconf:
+  ansible.builtin.debconf:
     name: tzdata
     question: tzdata/Zones/Europe
     value: London
     vtype: select
 
 - name: Set timezone UTC
-  debconf:
+  ansible.builtin.debconf:
     name: tzdata
     question: tzdata/Zones/Etc
     value: UTC
     vtype: select
 
 - name: Set keyboard
-  debconf:
+  ansible.builtin.debconf:
     name: keyboard-configuration
     question: keyboard-configuration/variant
     value: English (US)
     vtype: select
 
 - name: Create the admin user
-  user:
+  ansible.builtin.user:
     name: "{{ admin_username }}"
     password: "{{ admin_password }}"
     create_home: true
@@ -147,22 +147,22 @@
     key: "{{ admin_public_key }}"
 
 - name: Enable zfs-import-scan
-  systemd:
+  ansible.builtin.systemd:
     name: zfs-import-scan
     enabled: true
 
 - name: Mask zfs-import-cache
-  systemd:
+  ansible.builtin.systemd:
     name: zfs-import-cache
     masked: true
 
 - name: Ensure the ZFS cache file doesn't exist
-  file:
+  ansible.builtin.file:
     path: /etc/zfs/zpool.cache
     state: absent
 
 - name: Create the zfs-import-scan service override directory
-  file:
+  ansible.builtin.file:
     path: /etc/systemd/system/zfs-import-scan.service.d
     state: directory
     owner: root
@@ -170,7 +170,7 @@
     mode: "0o755"
 
 - name: Override the zfs-import-scan service to not check for zpool.cache
-  copy:
+  ansible.builtin.copy:
     content: |
       [Unit]
       ConditionPathExists=
@@ -180,7 +180,7 @@
     mode: "0o644"
 
 - name: Enable the /tmp tmpfs mount service
-  systemd:
+  ansible.builtin.systemd:
     service: tmp.mount
     enabled: true
 
@@ -191,7 +191,7 @@
     user: root
 
 - name: Configure the dropbear port
-  copy:
+  ansible.builtin.copy:
     content: 'DROPBEAR_OPTIONS="-p {{ dropbear_port }}"'
     dest: /etc/dropbear-initramfs/config
     owner: root
@@ -199,28 +199,28 @@
     mode: "0o600"
 
 - name: Update the initramfs
-  command: update-initramfs -c -k all
+  ansible.builtin.command: update-initramfs -c -k all
 
 - name: Tell grub where the root is
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/default/grub
     regexp: '^GRUB_CMDLINE_LINUX='
     line: 'GRUB_CMDLINE_LINUX="root=ZFS=rpool/ROOT/{{ zfs_system_root_name }}"'
 
 - name: Update grub configuration files
-  command: update-grub
+  ansible.builtin.command: update-grub
 
 - name: Install grub
-  command: grub-install
+  ansible.builtin.command: grub-install
 
 - name: Create temporary file to contain the hash for mokutil password
-  tempfile:
+  ansible.builtin.tempfile:
     state: file
     suffix: mokutil_pw
   register: _mokutil_file
 
 - name: Write the password to the mokutil hash file
-  copy:
+  ansible.builtin.copy:
     content: "{{ mokutil_password }}"
     dest: "{{ _mokutil_file.path }}"
     mode: "0o600"
@@ -228,7 +228,7 @@
     group: root
 
 - name: Import the generated Secure boot key
-  command: mokutil --hash-file "{{ _mokutil_file.path }}" --import /var/lib/dkms/mok.pub
+  ansible.builtin.command: mokutil --hash-file "{{ _mokutil_file.path }}" --import /var/lib/dkms/mok.pub
 
 - name: Snapshot the filesystems before boot
   community.general.zfs:

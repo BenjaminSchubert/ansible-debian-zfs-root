@@ -7,13 +7,13 @@
 
   handlers:
     - name: Restart sshd
-      systemd:
+      ansible.builtin.systemd:
         name: sshd
         state: restarted
 
   tasks:
     - name: Ensure the debian version is defined
-      assert:
+      ansible.builtin.assert:
         that:
           - ansible_distribution_release is defined
           - ansible_distribution_release != "n/a"
@@ -47,7 +47,7 @@
       changed_when: true
 
     - name: Unmount filesystems
-      command: umount /mnt/{{ item }}
+      ansible.builtin.command: umount /mnt/{{ item }}
       loop:
         - boot/efi
         - dev
@@ -59,4 +59,4 @@
 
     - name: Export zfs filesystems
       become: true
-      command: zpool export -a
+      ansible.builtin.command: zpool export -a
