@@ -1,6 +1,6 @@
 ---
 - name: Setup apt proxy
-  template:
+  ansible.builtin.template:
     src: apt-proxy.j2
     dest: /etc/apt/apt.conf.d/80-use-proxy
     owner: root
@@ -9,12 +9,12 @@
   when: apt_proxy_url is defined
 
 - name: Remove default apt lists
-  file:
+  ansible.builtin.file:
     name: /etc/apt/sources.list
     state: absent
 
 - name: Setup apt sources
-  template:
+  ansible.builtin.template:
     src: sources.list.j2
     dest: "/etc/apt/sources.list.d/{{ ansible_distribution_release }}.list"
     owner: root

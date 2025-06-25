@@ -64,7 +64,7 @@ Edit the inventory file [./inventory.yml](./inventory.yml) and fill in the field
 In order to install the system, run:
 
 ```
-ansible-playbook --diff playbook.yml
+ansible-playbook --diff playbooks/provision.yml
 ```
 
 Once it is done, you can safely reboot your computer, and will be able to log

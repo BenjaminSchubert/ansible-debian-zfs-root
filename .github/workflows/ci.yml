@@ -1,0 +1,49 @@
+---
+# All the checks run here (except for secret scanning) can be run locally with:
+#
+#   tox
+#
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  ANSIBLE: 2.18
+  PYTHON: 3.13
+
+jobs:
+  ###
+  # Linting jobs
+  ###
+  ansible-lint:
+    runs-on: ubuntu-latest
+    env:
+      # Not quite sure why we need to set this, but it gives warnings otherwise
+      ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run ansible-lint
+        uses: ansible/ansible-lint@main
+        with:
+          args: --strict playbooks/
+          requirements_file: requirements.yml
+
+  secret-scanning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret Scanning
+        uses: trufflesecurity/trufflehog@main
