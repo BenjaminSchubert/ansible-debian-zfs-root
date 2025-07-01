@@ -2,7 +2,7 @@
 - name: Mount /boot/efi
   ansible.posix.mount:
     fstype: vfat
-    opts: x-systemd.idle-timeout=1min,x-systemd.automount,noauto
+    opts: umask=0077
     passno: "1"
     path: /boot/efi
     src: UUID={{ ansible_devices[root_disks[0]].partitions[root_disks[0] + '1'].uuid }}
@@ -65,11 +65,13 @@
       - linux-image-amd64
       - linux-headers-amd64
       - locales
+      - man-db
       - openssh-server
       - sudo
       - grub-efi-amd64
       - grub-efi-amd64-signed
       - shim-signed
+      - tmux
     install_recommends: false
 
 - name: Install zfs packages
@@ -197,6 +199,15 @@
     owner: root
     group: root
     mode: "0o600"
+
+- name: Configure the SSH port if configured
+  ansible.builtin.copy:
+    content: Port {{ ssh_port }}
+    dest: /etc/ssh/sshd_config.d/00-port.conf
+    owner: root
+    group: root
+    mode: "0o600"
+  when: ssh_port != 22
 
 - name: Update the initramfs
   ansible.builtin.command: update-initramfs -c -k all

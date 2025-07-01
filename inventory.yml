@@ -78,3 +78,7 @@ external:
 
       # Whether to enable backports to install ZFS or not
       enable_backports: false
+
+      # The port to use for SSH
+      #
+      ssh_port: 22
