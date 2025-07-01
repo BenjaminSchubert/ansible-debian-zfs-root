@@ -54,7 +54,8 @@ This is the most critical part of the setup and later steps _**will wipe**_ disk
 ⚠️⚠️⚠️
 
 
-Edit the inventory file [./inventory.yml](./inventory.yml) and fill in the fields according to the inline documentation.
+Copy the example inventory file [./inventory.examlep.yml](./inventory.example.yml)
+ and fill in the fields according to the inline documentation.
 
 
 ### Starting the installation
