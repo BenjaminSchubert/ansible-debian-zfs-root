@@ -3,7 +3,7 @@
   hosts: external
 
   vars:
-    zfs_system_root_name: "{{ ansible_distribution | lower }}-{{ ansible_distribution_release }}"
+    zfs_system_root_name: "{{ ansible_facts.distribution | lower }}-{{ ansible_facts.distribution_release }}"
 
   handlers:
     - name: Restart sshd
@@ -15,8 +15,8 @@
     - name: Ensure the debian version is defined
       ansible.builtin.assert:
         that:
-          - ansible_distribution_release is defined
-          - ansible_distribution_release != "n/a"
+          - ansible_facts.distribution_release is defined
+          - ansible_facts.distribution_release != "n/a"
 
     - name: Setup the live environment
       ansible.builtin.import_tasks: tasks/setup_live_environment.yml
@@ -30,7 +30,7 @@
 
   vars:
     ansible_port: 8922
-    zfs_system_root_name: "{{ ansible_distribution | lower }}-{{ ansible_distribution_release }}"
+    zfs_system_root_name: "{{ ansible_facts.distribution | lower }}-{{ ansible_facts.distribution_release }}"
 
   tasks:
     - name: Setup the system
@@ -58,5 +58,6 @@
         - sys
 
     - name: Export zfs filesystems
-      become: true
       ansible.builtin.command: zpool export -a
+      retries: 30
+      delay: 3
