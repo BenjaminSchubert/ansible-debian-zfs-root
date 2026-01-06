@@ -2,7 +2,13 @@
 - name: Install a new debian system
   hosts: external
 
+  vars:
+    ansible_become_pass: "{{ admin_password_clear }}"
+
   tasks:
+    ##
+    # Internet connectivity
+    ##
     - name: Ensure host has internet connectivity
       ansible.builtin.wait_for:
         host: "{{ ansible_facts.default_ipv4.gateway }}"
@@ -14,3 +20,24 @@
         host: www.google.com
         port: 80
         timeout: 1
+
+    ##
+    # Software is up to date
+    ##
+    - name: Ensure the apt cache is up to date
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Check what packages would need an update
+      become: true
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      check_mode: true
+      register: packages
+
+    - name: Ensure no packages need update
+      ansible.builtin.assert:
+        that: "'0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.' in packages.stdout_lines"
+        msg: "{{ packages.stdout_lines }}"
