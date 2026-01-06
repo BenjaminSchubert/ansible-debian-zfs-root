@@ -17,6 +17,7 @@
       - dosfstools
       - gdisk
       - linux-headers-{{ ansible_facts.kernel }}
+      - lsof
       - mokutil
       - parted
       - python3-pexpect

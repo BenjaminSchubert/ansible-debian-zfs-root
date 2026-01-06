@@ -1,0 +1,164 @@
+---
+- name: Create container instances
+  hosts: localhost
+  gather_facts: false
+
+  environment:
+    # Ensure the path is not modified by a virtual env that could be in use
+    PATH: /usr/bin:/usr/sbin
+
+  tasks:
+    - name: Ensure required directories exist
+      ansible.builtin.file:
+        path: "{{ molecule_ephemeral_directory }}/{{ item }}"
+        state: directory
+        mode: "0o755"
+      loop:
+        - keys
+        - cloud-init
+
+    - name: Generate a ssh key
+      community.crypto.openssh_keypair:
+        path: "{{ molecule_ephemeral_directory }}/keys/id_rsa"
+      register: _key
+
+    - name: Generate cloud-init user config
+      ansible.builtin.copy:
+        content: |
+          #cloud-config
+          disable: true
+          hostname: debian-zfs-root.test
+          fqdn: debian-zfs-root.test
+          manage_etc_hosts: true
+          users:
+            - name: root
+              ssh-authorized-keys:
+                - {{ _key.public_key }}
+          ssh_pwauth: false
+          disable_root: false
+        dest: "{{ molecule_ephemeral_directory }}/cloud-init/user-data"
+        mode: "0o644"
+
+    - name: Generate cloud-init iso
+      ansible.builtin.command:
+        cmd: >-
+          cloud-localds
+            {{ molecule_ephemeral_directory }}/cloud-init/cloud-init.iso
+            {{ molecule_ephemeral_directory }}/cloud-init/user-data
+        creates: "{{ molecule_ephemeral_directory }}/cloud-init/cloud-init.iso"
+
+    - name: Download the Debian base image
+      ansible.builtin.get_url:
+        url: https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2
+        dest: "{{ molecule_ephemeral_directory | dirname }}/original-debian-13.qcow2"
+        mode: "0o644"
+        checksum: sha512:https://cloud.debian.org/images/cloud/trixie/latest/SHA512SUMS
+        timeout: 60
+
+    - name: Copy the pre-downloaded image
+      ansible.builtin.copy:
+        src: "{{ molecule_ephemeral_directory | dirname }}/original-debian-13.qcow2"
+        dest: "{{ molecule_ephemeral_directory }}/bootstrap.qcow2"
+        mode: "0o644"
+        force: false
+
+    - name: Create the system disk
+      ansible.builtin.command:
+        cmd: qemu-img create -f  qcow2 {{ molecule_ephemeral_directory }}/disk1.qcow2 10G
+        creates: "{{ molecule_ephemeral_directory }}/disk1.qcow2"
+
+    - name: Start the VM
+      community.libvirt.virt_install:
+        name: debian-zfs-root.test
+        memory: 4096
+        vcpus: 4
+        boot: uefi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no
+        cdrom: "{{ molecule_ephemeral_directory }}/cloud-init/cloud-init.iso"
+        disks:
+          - path: "{{ molecule_ephemeral_directory }}/disk1.qcow2"
+            serial: 1111111111
+            boot:
+              order: 1
+          - path: "{{ molecule_ephemeral_directory }}/bootstrap.qcow2"
+            boot:
+              order: 2
+        import: true
+        graphics:
+          type: spice
+        networks:
+          - bridge: virbr0
+            model:
+              type: virtio
+        osinfo:
+          name: debian13
+        transient: false
+        uri: qemu:///session
+        virt_type: kvm
+
+    - name: Gather info about VM
+      community.libvirt.virt:
+        command: get_interfaces
+        name: debian-zfs-root.test
+        uri: qemu:///session
+      register: _interfaces
+
+    - name: Gather facts about networks
+      community.libvirt.virt_net:
+        command: facts
+      until: >-
+        _networks.ansible_facts.ansible_libvirt_networks.default.dhcp_leases
+        | selectattr('mac', 'equalto', _interfaces.network_interfaces.interface_1.mac)
+        | length == 1
+      retries: 10
+      delay: 3
+      register: _networks
+
+    - name: Find the ip address
+      ansible.builtin.set_fact:
+        addr: >-
+          {{
+            ansible_facts.libvirt_networks.default.dhcp_leases
+            | selectattr('mac', 'equalto', _interfaces.network_interfaces.interface_1.mac)
+            | map(attribute='ipaddr')
+            | first
+          }}
+
+    - name: Dump instance config for molecule
+      ansible.builtin.copy:
+        content: |
+          # Molecule managed
+          ---
+          - instance: debian-zfs-root.test
+            address: {{ addr }}
+            identity_file: {{ molecule_ephemeral_directory }}/keys/id_rsa
+            port: 22
+            user: root
+        dest: "{{ molecule_instance_config }}"
+        mode: "0600"
+
+    - name: Poweroff the vm
+      community.libvirt.virt:
+        name: debian-zfs-root.test
+        state: shutdown
+        uri: qemu:///session
+
+    - name: Wait for the VM to be off
+      community.libvirt.virt:
+        name: debian-zfs-root.test
+        command: status
+        uri: qemu:///session
+      until: _vm_stat.status == "shutdown"
+      retries: 10
+      delay: 1
+      register: _vm_stat
+
+    - name: Reboot the vm
+      community.libvirt.virt:
+        name: debian-zfs-root.test
+        state: running
+        uri: qemu:///session
+
+    - name: Wait for the VM to come back online
+      ansible.builtin.wait_for:
+        host: "{{ addr }}"
+        port: 22

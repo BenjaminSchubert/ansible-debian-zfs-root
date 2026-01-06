@@ -1,0 +1,37 @@
+---
+ansible:
+  executor:
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_SCENARIO_DIRECTORY}/inventory
+  env:
+    ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
+    ANSIBLE_DIFF_ALWAYS: "True"
+    ANSIBLE_PIPELINING: "True"
+
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ${MOLECULE_PROJECT_DIRECTORY}/requirements.yml
+
+platforms:
+  - name: debian-zfs-root.test
+
+scenario:
+  converge_sequence:
+    - dependency
+    - syntax
+    - create
+    - converge
+  create_sequence:
+    - dependency
+    - syntax
+    - create
+  test_sequence:
+    - dependency
+    - syntax
+    - destroy
+    - create
+    - converge
+    - verify
+    - destroy
