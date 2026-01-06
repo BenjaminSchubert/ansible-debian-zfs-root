@@ -68,11 +68,11 @@
       - man-db
       - openssh-server
       - sudo
-      - grub-efi-amd64
-      - grub-efi-amd64-signed
       - shim-signed
+      - systemd-boot
       - systemd-resolved
       - tmux
+      - zstd
     install_recommends: false
 
 - name: Install zfs packages
@@ -215,20 +215,14 @@
     mode: "0o600"
   when: ssh_port != 22
 
+- name: Generate the proper cmdline configuration
+  ansible.builtin.copy:
+    content: root=ZFS=rpool/ROOT/debian-trixie boot=zfs
+    dest: /etc/kernel/cmdline
+    mode: "0o644"
+
 - name: Update the initramfs
   ansible.builtin.command: update-initramfs -c -k all
-
-- name: Tell grub where the root is
-  ansible.builtin.lineinfile:
-    path: /etc/default/grub
-    regexp: '^GRUB_CMDLINE_LINUX='
-    line: 'GRUB_CMDLINE_LINUX="root=ZFS=rpool/ROOT/{{ zfs_system_root_name }}"'
-
-- name: Update grub configuration files
-  ansible.builtin.command: update-grub
-
-- name: Install grub
-  ansible.builtin.command: grub-install
 
 - name: Create temporary file to contain the hash for mokutil password
   ansible.builtin.tempfile:
@@ -250,10 +244,5 @@
     - molecule-notest
 
 - name: Snapshot the filesystems before boot
-  community.general.zfs:
-    name: "{{ item }}@install"
-    state: present
-  loop:
-    - rpool/ROOT/{{ zfs_system_root_name }}
-    - bpool/BOOT/{{ zfs_system_root_name }}
-    - rpool/var
+  ansible.builtin.command:
+    cmd: zfs snapshot -r rpool@install
