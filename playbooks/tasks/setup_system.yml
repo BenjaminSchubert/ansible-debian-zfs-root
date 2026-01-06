@@ -246,6 +246,8 @@
 
 - name: Import the generated Secure boot key
   ansible.builtin.command: mokutil --hash-file "{{ _mokutil_file.path }}" --import /var/lib/dkms/mok.pub
+  tags:
+    - molecule-notest
 
 - name: Snapshot the filesystems before boot
   community.general.zfs:

@@ -32,11 +32,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Install python
+        uses: actions/setup-python@v6
+        with:
+          cache: pip
+          python-version: ${{ env.PYTHON }}
+      - name: Install dependencies
+        run: pip install ansible distlib
+      - name: Install the collection
+        run: ansible-galaxy collection install .
+      - name: Install test collections
+        run: ansible-galaxy install --role-file=extensions/molecule/default/requirements.yml
       - name: Run ansible-lint
         uses: ansible/ansible-lint@main
         with:
-          args: --strict playbooks/
-          requirements_file: requirements.yml
+          args: --strict
+          setup_python: false
+          working_directory: ${{ github.workspace }}/ansible_collections/benschubert/debian_zfs_root/
 
   secret-scanning:
     runs-on: ubuntu-latest
@@ -47,3 +59,45 @@ jobs:
           fetch-depth: 0
       - name: Secret Scanning
         uses: trufflesecurity/trufflehog@main
+
+  ###
+  # Tests
+  ###
+  molecule:
+    name: molecule
+    env:
+      PY_COLORS: 1
+      ANSIBLE_FORCE_COLOR: 1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install python
+        uses: actions/setup-python@v6
+        with:
+          cache: pip
+          python-version: ${{ env.PYTHON }}
+      - name: Update apt cache
+        run: sudo apt-get update
+      - name: Install libvirt and dependencies
+        run: sudo apt-get install --assume-yes cloud-image-utils libvirt-daemon-system libvirt-dev qemu-kvm virtinst
+      - name: Add user to the kvm group
+        run: sudo adduser "${USER}" kvm
+      - name: Add user to the libvirt group
+        run: sudo adduser "${USER}" libvirt
+      - name: Add user to the libvirt-qemu group
+        run: sudo adduser "${USER}" libvirt-qemu
+      - name: Configure bridge for user-space networking
+        run: sudo mkdir /etc/qemu && echo "allow virbr0" | sudo tee /etc/qemu/bridge.conf
+      - name: Allow qemu-bridge-helper to be used as non-root
+        run: sudo chmod u+s /usr/lib/qemu/qemu-bridge-helper
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: molecule create
+        run: sg kvm 'sg libvirt-qemu "sg libvirt \"sg \\\"${USER}\\\" \\\"molecule create\\\"\""'
+      - name: molecule converge
+        run: sg kvm 'sg libvirt-qemu "sg libvirt \"sg \\\"${USER}\\\" \\\"molecule converge\\\"\""'
+      - name: molecule verify
+        run: molecule verify
+      - name: molecule destroy
+        run: molecule destroy

@@ -1,0 +1,16 @@
+---
+- name: Install a new debian system
+  hosts: external
+
+  tasks:
+    - name: Ensure host has internet connectivity
+      ansible.builtin.wait_for:
+        host: "{{ ansible_facts.default_ipv4.gateway }}"
+        port: 53
+        timeout: 1
+
+    - name: Ensure host can resolve hostnames
+      ansible.builtin.wait_for:
+        host: www.google.com
+        port: 80
+        timeout: 1

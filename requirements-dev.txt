@@ -1,0 +1,6 @@
+distlib
+libvirt-python
+lxml
+molecule
+passlib
+pexpect

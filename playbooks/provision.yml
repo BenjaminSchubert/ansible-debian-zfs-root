@@ -45,6 +45,8 @@
       ansible.builtin.command:
         cmd: ssh -O stop root@{{ inventory_hostname }} -p 8922
       changed_when: true
+      tags:
+        - molecule-notest
 
     - name: Unmount filesystems
       ansible.builtin.command: umount /mnt/{{ item }}

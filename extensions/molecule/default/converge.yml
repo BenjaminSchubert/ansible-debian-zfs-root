@@ -1,0 +1,97 @@
+---
+- name: Install the new system
+  ansible.builtin.import_playbook: benschubert.debian_zfs_root.provision
+
+- name: Reconfigure the host
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Stop the VM gracefully
+      community.libvirt.virt:
+        name: debian-zfs-root.test
+        state: shutdown
+        uri: qemu:///session
+
+    - name: Wait for the VM to be off
+      community.libvirt.virt:
+        name: debian-zfs-root.test
+        command: status
+        uri: qemu:///session
+      until: _vm_stat.status == "shutdown"
+      retries: 10
+      delay: 1
+      register: _vm_stat
+
+    - name: Restart the VM
+      community.libvirt.virt:
+        name: debian-zfs-root.test
+        state: running
+        uri: qemu:///session
+
+    - name: Set the ip address and hostvars
+      ansible.builtin.set_fact:
+        addr: "{{ hostvars['debian-zfs-root.test'].ansible_host }}"
+        hvars: "{{ hostvars['debian-zfs-root.test'] }}"
+
+    - name: Wait for ssh to be up for dropbear
+      ansible.builtin.wait_for:
+        port: "{{ hvars.dropbear_port }}"
+        host: "{{ addr }}"
+        search_regex: dropbear
+        timeout: 120
+
+    - name: Unlock the disk
+      ansible.builtin.expect:
+        command: ssh root@{{ addr }} -p 4748 {{ hvars.ansible_ssh_common_args }} -i {{ hvars.ansible_private_key_file }}
+        responses:
+          "~ #": zfsunlock && exit 0
+          rpool: "{{ hvars.zfs_pool_password }}"
+
+    - name: Ensure the machine is reachable
+      block:
+        - name: Wait for the VM to be accessible
+          ansible.builtin.wait_for:
+            host: "{{ addr }}"
+            port: 22
+            timeout: 15
+      rescue:
+        # Sometimes the VM might change IP after the initial reboot and unlock
+        # If so, update the IP
+        - name: Gather facts about networks
+          community.libvirt.virt_net:
+            command: facts
+          until: >-
+            _networks.ansible_facts.ansible_libvirt_networks.default.dhcp_leases
+            | selectattr('hostname', 'equalto', 'debian-zfs-root')
+            | length == 1
+          register: _networks
+
+        - name: Set the ip address and hostvars
+          ansible.builtin.set_fact:
+            addr: >-
+              {{
+                ansible_facts.libvirt_networks.default.dhcp_leases
+                | selectattr('hostname', 'equalto', 'debian-zfs-root')
+                | map(attribute='ipaddr')
+                | first
+              }}
+
+        - name: Wait for the VM to be accessible
+          ansible.builtin.wait_for:
+            host: "{{ addr }}"
+            port: 22
+            timeout: 5
+
+    - name: Update the instance config for molecule
+      ansible.builtin.copy:
+        content: |
+          # Molecule managed
+          ---
+          {{
+            lookup('ansible.builtin.file', hostvars['debian-zfs-root.test'].molecule_instance_config)
+            | from_yaml
+            | map('combine', {'address': addr, 'user': 'testuser'})
+            | to_nice_yaml
+          }}
+        dest: "{{ molecule_instance_config }}"
+        mode: "0600"

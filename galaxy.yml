@@ -1,0 +1,26 @@
+---
+namespace: benschubert
+name: debian_zfs_root
+version: 0.0.1
+description: Install a Debian on ZFS root system
+
+authors:
+  - Benjamin Schubert <contact@benschubert.me>
+
+dependencies:
+  ansible.posix: ">=1.6.0"
+  community.general: "*"
+
+readme: README.md
+repository: https://github.com/BenjaminSchubert/ansible-debian-zfs-root
+
+manifest:
+  omit_default_directives: true
+  directives:
+    # - include meta/*.yml
+    - recursive-include playbooks **
+    # - recursive-include plugins **
+    # - recursive-include roles **
+    - include requirements *.txt
+    - include .ansible-lint.yml
+    # - recursive-include tests **
