@@ -3,7 +3,7 @@ external:
   hosts:
     debian-zfs-root.test:
       admin_username: testuser
-      admin_password: "{{ 'testuser' | ansible.builtin.password_hash }}"
+      admin_password: "{{ admin_password_clear | ansible.builtin.password_hash }}"
       admin_public_key: "{{ lookup('ansible.builtin.file', molecule_ephemeral_directory + '/keys/id_rsa.pub') }}"
       dropbear_port: 4748
       enable_backports: true
@@ -14,3 +14,6 @@ external:
         - vda
       ssh_port: 22
       zfs_pool_password: password
+
+      # Testing options
+      admin_password_clear: testuser
