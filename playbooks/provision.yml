@@ -2,9 +2,6 @@
 - name: Install a new debian system
   hosts: external
 
-  vars:
-    zfs_system_root_name: "{{ ansible_facts.distribution | lower }}-{{ ansible_facts.distribution_release }}"
-
   handlers:
     - name: Restart sshd
       ansible.builtin.systemd:
@@ -30,7 +27,6 @@
 
   vars:
     ansible_port: 8922
-    zfs_system_root_name: "{{ ansible_facts.distribution | lower }}-{{ ansible_facts.distribution_release }}"
 
   tasks:
     - name: Setup the system

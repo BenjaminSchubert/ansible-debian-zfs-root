@@ -80,14 +80,14 @@
 
 - name: Create distribution specific root mountpoint
   community.general.zfs:
-    name: "rpool/ROOT/{{ zfs_system_root_name }}"
+    name: rpool/ROOT/debian
     state: present
     extra_zfs_properties:
       canmount: noauto
       mountpoint: /
 
 - name: Mount the root filesystem
-  ansible.builtin.command: zfs mount rpool/ROOT/{{ zfs_system_root_name }}
+  ansible.builtin.command: zfs mount rpool/ROOT/debian
 
 - name: Create zfs volumes
   community.general.zfs:
@@ -99,7 +99,7 @@
       properties:
         canmount: false
         mountpoint: none
-    - name: BOOT/{{ zfs_system_root_name }}
+    - name: BOOT/debian
       properties:
         mountpoint: /boot
     - name: home

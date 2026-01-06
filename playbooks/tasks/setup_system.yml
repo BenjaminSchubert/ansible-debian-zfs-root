@@ -217,7 +217,7 @@
 
 - name: Generate the proper cmdline configuration
   ansible.builtin.copy:
-    content: root=ZFS=rpool/ROOT/debian-trixie boot=zfs
+    content: root=ZFS=rpool/ROOT/debian boot=zfs
     dest: /etc/kernel/cmdline
     mode: "0o644"
 
