@@ -42,13 +42,13 @@
 
 - name: Get all existing zfs pools name
   ansible.builtin.set_fact:
-    zfs_pools_names: "{{ ansible_zfs_pools | map(attribute='name') | list }}"
+    zfs_pools_names: "{{ ansible_facts.zfs_pools | map(attribute='name') | list }}"
 
 - name: Create the efi partitions
   community.general.filesystem:
     fstype: vfat
     opts: -F 32 -s 1 -n EFI
-    dev: "/dev/disk/by-id/{{ ansible_devices[item].partitions[item + '1'].links.ids[0] }}"
+    dev: "/dev/disk/by-id/{{ ansible_facts.devices[item].partitions[item + '1'].links.ids[0] }}"
   loop: "{{ root_disks }}"
 
 - name: Create the zfs bpool pool
@@ -83,7 +83,7 @@
       bpool
       {{ pool_mode | default() }}
       {% for disk in root_disks %}
-        {{ ansible_devices[disk].partitions[disk + "2"].links.ids[0] }}
+        {{ ansible_facts.devices[disk].partitions[disk + "2"].links.ids[0] }}
       {% endfor %}
 
 - name: Create the zfs rpool pool
@@ -109,7 +109,7 @@
         rpool
         {{ pool_mode | default() }}
         {% for disk in root_disks %}
-          {{ ansible_devices[disk].partitions[disk + "3"].links.ids[0] }}
+          {{ ansible_facts.devices[disk].partitions[disk + "3"].links.ids[0] }}
         {% endfor %}
     responses:
       Enter new passphrase: "{{ zfs_pool_password }}"
@@ -178,11 +178,11 @@
 - name: Deboostrap the system
   ansible.builtin.command: |
     debootstrap
-    --include lsb-release,python3,python3-apt
-    {{ ansible_distribution_release }}
+    --include lsb-release,python3,python3-apt,sudo
+    {{ ansible_facts.distribution_release }}
     /mnt
     {% if apt_proxy_url is defined %}
-    {{ apt_proxy_url }}/debian {{ ansible_distribution_release }} main contrib
+    {{ apt_proxy_url }}/debian {{ ansible_facts.distribution_release }} main contrib
     {% endif %}
   args:
     creates: /mnt/etc

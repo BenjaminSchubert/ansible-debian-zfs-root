@@ -5,7 +5,7 @@
     opts: umask=0077
     passno: "1"
     path: /boot/efi
-    src: UUID={{ ansible_devices[root_disks[0]].partitions[root_disks[0] + '1'].uuid }}
+    src: UUID={{ ansible_facts.devices[root_disks[0]].partitions[root_disks[0] + '1'].uuid }}
     state: mounted
 
 - name: Set the hostname
@@ -71,6 +71,7 @@
       - grub-efi-amd64
       - grub-efi-amd64-signed
       - shim-signed
+      - systemd-resolved
       - tmux
     install_recommends: false
 
@@ -80,7 +81,7 @@
       - zfs-dkms
       - zfs-initramfs
       - zfs-zed
-    default_release: "{{ enable_backports | ternary(ansible_distribution_release + '-backports', omit) }}"
+    default_release: "{{ enable_backports | ternary(ansible_facts.distribution_release + '-backports', omit) }}"
 
 - name: Ensure the requested locale exists
   community.general.locale_gen:
@@ -115,7 +116,7 @@
   ansible.builtin.debconf:
     name: tzdata
     question: tzdata/Zones/Europe
-    value: London
+    value: Zurich
     vtype: select
 
 - name: Set timezone UTC
@@ -147,6 +148,11 @@
     user: "{{ admin_username }}"
     state: present
     key: "{{ admin_public_key }}"
+
+- name: Enable systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    enabled: true
 
 - name: Enable zfs-import-scan
   ansible.builtin.systemd:
@@ -189,13 +195,13 @@
 - name: Authorize user for remote-unlock
   ansible.posix.authorized_key:
     key: "{{ admin_public_key }}"
-    path: /etc/dropbear-initramfs/authorized_keys
+    path: /etc/dropbear/initramfs/authorized_keys
     user: root
 
 - name: Configure the dropbear port
   ansible.builtin.copy:
     content: 'DROPBEAR_OPTIONS="-p {{ dropbear_port }}"'
-    dest: /etc/dropbear-initramfs/config
+    dest: /etc/dropbear/initramfs/dropbear.conf
     owner: root
     group: root
     mode: "0o600"

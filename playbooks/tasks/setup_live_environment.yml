@@ -24,7 +24,7 @@
 - name: Install zfs packages
   ansible.builtin.apt:
     name: zfs-dkms
-    default_release: "{{ enable_backports | ternary(ansible_distribution_release + '-backports', omit) }}"
+    default_release: "{{ enable_backports | ternary(ansible_facts.distribution_release + '-backports', omit) }}"
 
 - name: Ensure zfs modules are loaded
   community.general.modprobe:
@@ -36,12 +36,13 @@
 - name: Install zfs utils
   ansible.builtin.apt:
     name: zfsutils-linux
-    default_release: "{{ enable_backports | ternary(ansible_distribution_release + '-backports', omit) }}"
+    default_release: "{{ enable_backports | ternary(ansible_facts.distribution_release + '-backports', omit) }}"
 
 - name: Configure sshd to allow connecting directly inside the chroot
   notify: Restart sshd
   ansible.builtin.blockinfile:
     block: |
+      Port 22
       Port 8922
       Match LocalPort 8922
         ChrootDirectory /mnt

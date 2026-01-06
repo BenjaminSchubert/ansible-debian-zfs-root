@@ -16,7 +16,7 @@
 - name: Setup apt sources
   ansible.builtin.template:
     src: sources.list.j2
-    dest: "/etc/apt/sources.list.d/{{ ansible_distribution_release }}.list"
+    dest: "/etc/apt/sources.list.d/{{ ansible_facts.distribution_release }}.list"
     owner: root
     group: root
     mode: "0o644"
