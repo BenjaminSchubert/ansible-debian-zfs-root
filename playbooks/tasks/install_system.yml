@@ -129,9 +129,8 @@
     --include lsb-release,python3,python3-apt,python3-debian,sudo
     {{ ansible_facts.distribution_release }}
     /mnt
-    {% if apt_proxy_url is defined %}
-    {{ apt_proxy_url }}/debian {{ ansible_facts.distribution_release }} main contrib
-    {% endif %}
+  environment:
+    http_proxy: "{{ (apt_proxy_url | length > 0) | ternary(apt_proxy_url, omit) }}"
   args:
     creates: /mnt/etc
 

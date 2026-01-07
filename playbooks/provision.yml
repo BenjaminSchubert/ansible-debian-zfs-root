@@ -36,6 +36,11 @@
   hosts: external
 
   tasks:
+    - name: Remove the temporary proxy
+      ansible.builtin.file:
+        path: /mnt/etc/apt/apt.conf.d/80-use-proxy
+        state: absent
+
     - name: Kill lingering ssh session
       delegate_to: 127.0.0.1
       ansible.builtin.command:

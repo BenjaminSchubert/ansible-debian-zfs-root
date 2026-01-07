@@ -1,12 +1,12 @@
 ---
 - name: Setup apt proxy
-  ansible.builtin.template:
-    src: apt-proxy.j2
+  ansible.builtin.copy:
+    content: Acquire::http { Proxy "{{ apt_proxy_url }}"; };
     dest: /etc/apt/apt.conf.d/80-use-proxy
     owner: root
     group: root
     mode: "0o644"
-  when: apt_proxy_url is defined
+  when: apt_proxy_url | default("") | length > 0
 
 - name: Remove default apt lists
   ansible.builtin.file:

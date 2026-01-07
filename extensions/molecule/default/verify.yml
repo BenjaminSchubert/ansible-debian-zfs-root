@@ -24,6 +24,18 @@
     ##
     # Software is up to date
     ##
+    - name: Get the status of the proxy file
+      ansible.builtin.file:
+        path: /etc/apt/apt.conf.d/80-use-proxy
+        state: absent
+      check_mode: true
+      register: _proxy_config
+
+    - name: Ensure no packages need update
+      ansible.builtin.assert:
+        that: not _proxy_config.changed
+        msg: 80-use-proxy should have been deleted
+
     - name: Ensure the apt cache is up to date
       become: true
       ansible.builtin.apt:
