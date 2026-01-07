@@ -17,4 +17,5 @@ external:
 
       # Testing options
       admin_password_clear: testuser
+      apt_proxy_url: "{{ lookup('ansible.builtin.env', 'APT_PROXY_URL') }}"
       debian_mirror: "{{ lookup('ansible.builtin.env', 'DEBIAN_MIRROR') }}"
