@@ -13,10 +13,29 @@
     name: /etc/apt/sources.list
     state: absent
 
-- name: Setup apt sources
-  ansible.builtin.template:
-    src: sources.list.j2
-    dest: "/etc/apt/sources.list.d/{{ ansible_facts.distribution_release }}.list"
-    owner: root
-    group: root
-    mode: "0o644"
+- name: Configure debian sources
+  become: true
+  ansible.builtin.deb822_repository:
+    name: debian
+    types:
+      - deb
+      - deb-src
+    uris: "{{ (debian_mirror | default('') | length > 0) | ternary(debian_mirror, 'http://deb.debian.org/debian') }}"
+    suites: >-
+      {{ ansible_facts.distribution_release }}
+      {{ ansible_facts.distribution_release }}-updates
+      {% if enable_backports %} {{ ansible_facts.distribution_release }}-backports{% endif %}
+    components: main contrib non-free-firmware
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+
+- name: Configure debian security sources
+  become: true
+  ansible.builtin.deb822_repository:
+    name: debian-security
+    types:
+      - deb
+      - deb-src
+    uris: http://deb.debian.org/debian-security
+    suites: "{{ ansible_facts.distribution_release }}-security"
+    components: main contrib non-free-firmware
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
