@@ -44,7 +44,6 @@
       ansible.builtin.expect:
         command: ssh root@{{ addr }} -p 4748 {{ hvars.ansible_ssh_common_args }} -i {{ hvars.ansible_private_key_file }}
         responses:
-          "~ #": zfsunlock && exit 0
           rpool: "{{ hvars.zfs_pool_password }}"
 
     - name: Ensure the machine is reachable

@@ -194,13 +194,17 @@
 
 - name: Authorize user for remote-unlock
   ansible.posix.authorized_key:
-    key: "{{ admin_public_key }}"
+    key: 'no-port-forwarding,no-agent-forwarding,no-x11-forwarding,command="/bin/zfsunlock" {{ admin_public_key }}'
     path: /etc/dropbear/initramfs/authorized_keys
     user: root
 
 - name: Configure the dropbear port
   ansible.builtin.copy:
-    content: 'DROPBEAR_OPTIONS="-p {{ dropbear_port }}"'
+    # -s disable password login
+    # -j disable local port forwarding
+    # -k disable remote port forwarding
+    # -I idle timeout to 60s
+    content: 'DROPBEAR_OPTIONS="-s -j -k -I 60 -p {{ dropbear_port }}"'
     dest: /etc/dropbear/initramfs/dropbear.conf
     owner: root
     group: root
