@@ -17,3 +17,4 @@ external:
 
       # Testing options
       admin_password_clear: testuser
+      debian_mirror: "{{ lookup('ansible.builtin.env', 'DEBIAN_MIRROR') }}"

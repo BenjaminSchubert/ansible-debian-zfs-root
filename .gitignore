@@ -2,3 +2,4 @@ inventory.yml
 .dwas/
 *.pyc
 .ansible/
+.env.yml
