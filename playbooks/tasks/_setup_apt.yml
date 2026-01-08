@@ -25,7 +25,7 @@
       {{ ansible_facts.distribution_release }}
       {{ ansible_facts.distribution_release }}-updates
       {% if enable_backports %} {{ ansible_facts.distribution_release }}-backports{% endif %}
-    components: main contrib non-free-firmware
+    components: main contrib
     signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
 
 - name: Configure debian security sources
@@ -37,5 +37,5 @@
       - deb-src
     uris: http://deb.debian.org/debian-security
     suites: "{{ ansible_facts.distribution_release }}-security"
-    components: main contrib non-free-firmware
+    components: main contrib
     signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
