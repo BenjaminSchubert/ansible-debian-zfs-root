@@ -39,3 +39,23 @@
     suites: "{{ ansible_facts.distribution_release }}-security"
     components: main contrib
     signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+
+- name: Configure backports
+  become: true
+  when: enable_backports
+  ansible.builtin.copy:
+    content: |
+      Package: {{ item }}
+      Pin: release a=stable-backports
+      Pin-Priority: 990
+    dest: /etc/apt/preferences.d/backports-{{ item }}
+    mode: "0o644"
+  loop:
+    - libnvpair3linux
+    - libuutil3linux
+    - libzfs6linux
+    - libzpool6linux
+    - zfsutils-linux
+    - zfs-dkms
+    - zfs-initramfs
+    - zfs-zed

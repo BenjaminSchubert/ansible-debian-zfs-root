@@ -81,7 +81,6 @@
       - zfs-dkms
       - zfs-initramfs
       - zfs-zed
-    default_release: "{{ enable_backports | ternary(ansible_facts.distribution_release + '-backports', omit) }}"
 
 - name: Ensure the requested locale exists
   community.general.locale_gen:
