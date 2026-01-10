@@ -175,3 +175,21 @@
   loop:
     - run
     - tmp
+
+- name: Mount /boot/efi
+  ansible.posix.mount:
+    fstype: vfat
+    opts: defaults,umask=0077,relatime
+    passno: "1"
+    path: /mnt/boot/efi
+    src: /dev/{{ root_disks[0] }}1
+    state: mounted
+
+- name: Mount mirror esp partitions
+  ansible.posix.mount:
+    src: /dev/{{ item }}1
+    path: /mnt/boot/efi/.esp-{{ item }}
+    fstype: vfat
+    opts: defaults,umask=0077,relatime
+    state: mounted
+  loop: "{{ root_disks[1:] }}"

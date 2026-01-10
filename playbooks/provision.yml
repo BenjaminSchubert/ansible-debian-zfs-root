@@ -50,7 +50,7 @@
         - molecule-notest
 
     - name: Unmount filesystems
-      ansible.builtin.command: umount /mnt/{{ item }}
+      ansible.builtin.command: umount --recursive /mnt/{{ item }}
       loop:
         - boot/efi
         - dev

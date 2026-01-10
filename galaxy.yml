@@ -17,10 +17,6 @@ repository: https://github.com/BenjaminSchubert/ansible-debian-zfs-root
 manifest:
   omit_default_directives: true
   directives:
-    # - include meta/*.yml
     - recursive-include playbooks **
-    # - recursive-include plugins **
-    # - recursive-include roles **
     - include requirements *.txt
     - include .ansible-lint.yml
-    # - recursive-include tests **

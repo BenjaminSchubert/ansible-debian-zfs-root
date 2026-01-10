@@ -12,10 +12,19 @@ ansible:
 dependency:
   name: galaxy
   options:
-    requirements-file: ${MOLECULE_PROJECT_DIRECTORY}/requirements.yml
+    # Pointing to the default directory doesn't seem to work properly
+    requirements-file: ${MOLECULE_SCENARIO_DIRECTORY}/../default/requirements.yml
 
 platforms:
-  - name: debian-zfs-root
+  - name: debian-zfs-root-mirror
+
+provisioner:
+  playbooks:
+    create: ../default/create.yml
+    destroy: ../default/destroy.yml
+    converge: ../default/converge.yml
+    prepare: ../default/prepare.yml
+    verify: ../default/verify.yml
 
 scenario:
   converge_sequence:
