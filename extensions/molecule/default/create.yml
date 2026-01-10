@@ -27,8 +27,8 @@
         content: |
           #cloud-config
           disable: true
-          hostname: debian-zfs-root.test
-          fqdn: debian-zfs-root.test
+          hostname: {{ groups['external'] | first }}
+          fqdn: {{ groups['external'] | first }}
           manage_etc_hosts: true
           users:
             - name: root
@@ -62,26 +62,42 @@
         mode: "0o644"
         force: false
 
-    - name: Create the system disk
+    - name: Create the system disk(s)
       ansible.builtin.command:
-        cmd: qemu-img create -f  qcow2 {{ molecule_ephemeral_directory }}/disk1.qcow2 10G
-        creates: "{{ molecule_ephemeral_directory }}/disk1.qcow2"
+        cmd: qemu-img create -f qcow2 {{ molecule_ephemeral_directory }}/disk-{{ item }}.qcow2 10G
+        creates: "{{ molecule_ephemeral_directory }}/disk-{{ item }}.qcow2"
+      loop: "{{ hostvars[groups['external'][0]].root_disks }}"
+
+    - name: Build the list of disks to use
+      ansible.builtin.set_fact:
+        _all_disks: >-
+          {{
+            _all_disks | default([]) + [
+              {
+                "path": molecule_ephemeral_directory + "/disk-" + item + ".qcow2",
+                "serial": item,
+                "boot":   {"order": idx + 1}
+              }
+            ]
+          }}
+      loop: "{{ hostvars[groups['external'][0]].root_disks }}"
+      loop_control:
+        index_var: idx
 
     - name: Start the VM
       community.libvirt.virt_install:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         memory: 4096
         vcpus: 4
         boot: uefi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no
         cdrom: "{{ molecule_ephemeral_directory }}/cloud-init/cloud-init.iso"
-        disks:
-          - path: "{{ molecule_ephemeral_directory }}/disk1.qcow2"
-            serial: 1111111111
-            boot:
-              order: 1
-          - path: "{{ molecule_ephemeral_directory }}/bootstrap.qcow2"
-            boot:
-              order: 2
+        disks: >-
+          {{
+            _all_disks + [{
+              'path': molecule_ephemeral_directory + "/bootstrap.qcow2",
+              'boot': {"order": hostvars[groups["external"][0]].root_disks | length + 1}
+            }]
+          }}
         import: true
         graphics:
           type: spice
@@ -98,7 +114,7 @@
     - name: Gather info about VM
       community.libvirt.virt:
         command: get_interfaces
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         uri: qemu:///session
       register: _interfaces
 
@@ -128,7 +144,7 @@
         content: |
           # Molecule managed
           ---
-          - instance: debian-zfs-root.test
+          - instance: {{ groups['external'] | first }}
             address: {{ addr }}
             identity_file: {{ molecule_ephemeral_directory }}/keys/id_rsa
             port: 22
@@ -138,13 +154,13 @@
 
     - name: Poweroff the vm
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         state: shutdown
         uri: qemu:///session
 
     - name: Wait for the VM to be off
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         command: status
         uri: qemu:///session
       until: _vm_stat.status == "shutdown"
@@ -154,7 +170,7 @@
 
     - name: Reboot the vm
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         state: running
         uri: qemu:///session
 

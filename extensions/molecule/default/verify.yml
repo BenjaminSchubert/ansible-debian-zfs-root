@@ -22,6 +22,31 @@
         timeout: 1
 
     ##
+    # Filesystems
+    ##
+    - name: Load the fstab content
+      become: true
+      ansible.builtin.slurp:
+        src: /etc/fstab
+      register: fstab
+
+    - name: Ensure the fstab contains the expected number of lines
+      ansible.builtin.assert:
+        that: (fstab.content | b64decode | regex_findall("\\S.*") | length) == (root_disks | length)
+        msg: |
+          Expected {{ root_disks | length }} entries in fstab. Got {{ fstab.content | b64decode | regex_findall("\\S.*") | length }} instead:
+          ---
+          {{ fstab.content | b64decode }}
+          ---
+
+    - name: Ensure the boot/efi directory is properly mirrored
+      become: true
+      ansible.builtin.command:
+        cmd: diff --exclude .esp-* --brief /boot/efi /boot/efi/.esp-{{ item }}
+      changed_when: false
+      loop: "{{ root_disks[1:] }}"
+
+    ##
     # Software is up to date
     ##
     - name: Get the status of the proxy file

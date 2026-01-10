@@ -1,7 +1,7 @@
 ---
 # All the checks run here (except for secret scanning) can be run locally with:
 #
-#   tox
+#   dwas
 #
 name: ci
 
@@ -69,6 +69,11 @@ jobs:
       PY_COLORS: 1
       ANSIBLE_FORCE_COLOR: 1
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scenario:
+          - default
+          - mirror
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -94,10 +99,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
       - name: molecule create
-        run: sg kvm 'sg libvirt-qemu "sg libvirt \"sg \\\"${USER}\\\" \\\"molecule create\\\"\""'
+        run: sg kvm 'sg libvirt-qemu "sg libvirt \"sg \\\"${USER}\\\" \\\"molecule create --scenario-name ${{ matrix.scenario }}\\\"\""'
       - name: molecule converge
-        run: sg kvm 'sg libvirt-qemu "sg libvirt \"sg \\\"${USER}\\\" \\\"molecule converge\\\"\""'
+        run: sg kvm 'sg libvirt-qemu "sg libvirt \"sg \\\"${USER}\\\" \\\"molecule converge --scenario-name ${{ matrix.scenario }}\\\"\""'
       - name: molecule verify
-        run: molecule verify
+        run: molecule verify --scenario-name ${{ matrix.scenario }}
       - name: molecule destroy
-        run: molecule destroy
+        run: molecule destroy --scenario-name ${{ matrix.scenario }}

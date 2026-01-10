@@ -11,26 +11,26 @@
 
     - name: Stop the VM gracefully
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         state: shutdown
         uri: qemu:///session
-      when: "'debian-zfs-root.test' in _all_vms.list_vms"
+      when: groups['external'][0] in _all_vms.list_vms
 
     - name: Wait for the VM to be off
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         command: status
         uri: qemu:///session
       until: _vm_stat.status == "shutdown"
       retries: 10
       delay: 1
       register: _vm_stat
-      when: "'debian-zfs-root.test' in _all_vms.list_vms"
+      when: groups['external'][0] in _all_vms.list_vms
 
     - name: Destroy the Virtual Machine
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         command: undefine
         force: true
         uri: qemu:///session
-      when: "'debian-zfs-root.test' in _all_vms.list_vms"
+      when: groups['external'][0] in _all_vms.list_vms

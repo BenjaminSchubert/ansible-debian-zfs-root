@@ -1,13 +1,4 @@
 ---
-- name: Mount /boot/efi
-  ansible.posix.mount:
-    fstype: vfat
-    opts: umask=0077
-    passno: "1"
-    path: /boot/efi
-    src: UUID={{ ansible_facts.devices[root_disks[0]].partitions[root_disks[0] + '1'].uuid }}
-    state: mounted
-
 - name: Set the hostname
   ansible.builtin.copy:
     dest: /etc/hostname
@@ -67,6 +58,7 @@
       - locales
       - man-db
       - openssh-server
+      - rsync
       - sudo
       - shim-signed
       - systemd-boot
@@ -223,6 +215,34 @@
     content: root=ZFS=rpool/ROOT/debian boot=zfs
     dest: /etc/kernel/cmdline
     mode: "0o644"
+
+- name: Generate the fstab
+  ansible.builtin.copy:
+    # yamllint disable rule:line-length
+    content: |
+      UUID={{ ansible_facts.devices[root_disks[0]].partitions[root_disks[0] + "1"].uuid }} /boot/efi vfat defaults,{% if root_disks | length > 1 %}nofail,{% endif %}umask=0077,relatime,x-systemd.after=zfs-mount.service 0 1
+      {% if root_disks | length > 1 %}
+      {% for disk in root_disks[1:] %}
+      UUID={{ ansible_facts.devices[disk].partitions[disk + "1"].uuid }} /boot/efi/.esp-{{ disk }} vfat defaults,nofail,umask=0077,relatime,x-systemd.after=zfs-mount.service 0 1
+      {% endfor %}
+      {%- endif -%}
+    # yamllint enable rule:line-length
+    dest: /etc/fstab
+    mode: "0o644"
+
+- name: Install systemd-boot on all partitions
+  ansible.builtin.command: bootctl install --esp-path=/boot/efi/.esp-{{ item }}/ --efi-boot-option-description literal:"Linux Boot Manager - {{ item }}"
+  loop: "{{ root_disks[1:] }}"
+
+- name: Install script to keep the boot mirrors in sync
+  ansible.builtin.copy:
+    content: |
+      #!/bin/sh
+
+      rsync --archive --recursive --exclude .esp-* --verbose /boot/efi/ /boot/efi/.esp-{{ item }}/
+    dest: /etc/initramfs/post-update.d/systemd-boot-mirror
+    mode: "0o755"
+  loop: "{{ root_disks[1:] }}"
 
 - name: Update the initramfs
   ansible.builtin.command: update-initramfs -c -k all

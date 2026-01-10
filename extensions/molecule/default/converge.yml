@@ -8,13 +8,13 @@
   tasks:
     - name: Stop the VM gracefully
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         state: shutdown
         uri: qemu:///session
 
     - name: Wait for the VM to be off
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         command: status
         uri: qemu:///session
       until: _vm_stat.status == "shutdown"
@@ -24,14 +24,14 @@
 
     - name: Restart the VM
       community.libvirt.virt:
-        name: debian-zfs-root.test
+        name: "{{ groups['external'] | first }}"
         state: running
         uri: qemu:///session
 
     - name: Set the ip address and hostvars
       ansible.builtin.set_fact:
-        addr: "{{ hostvars['debian-zfs-root.test'].ansible_host }}"
-        hvars: "{{ hostvars['debian-zfs-root.test'] }}"
+        addr: "{{ hostvars[groups['external'][0]].ansible_host }}"
+        hvars: "{{ hostvars[groups['external'][0]] }}"
 
     - name: Wait for ssh to be up for dropbear
       ansible.builtin.wait_for:
@@ -61,7 +61,7 @@
             command: facts
           until: >-
             _networks.ansible_facts.ansible_libvirt_networks.default.dhcp_leases
-            | selectattr('hostname', 'equalto', 'debian-zfs-root')
+            | selectattr('hostname', 'equalto', groups['external'][0])
             | length == 1
           register: _networks
 
@@ -70,7 +70,7 @@
             addr: >-
               {{
                 ansible_facts.libvirt_networks.default.dhcp_leases
-                | selectattr('hostname', 'equalto', 'debian-zfs-root')
+                | selectattr('hostname', 'equalto', groups['external'][0])
                 | map(attribute='ipaddr')
                 | first
               }}
@@ -87,7 +87,7 @@
           # Molecule managed
           ---
           {{
-            lookup('ansible.builtin.file', hostvars['debian-zfs-root.test'].molecule_instance_config)
+            lookup('ansible.builtin.file', hvars.molecule_instance_config)
             | from_yaml
             | map('combine', {'address': addr, 'user': 'testuser'})
             | to_nice_yaml
