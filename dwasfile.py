@@ -15,7 +15,7 @@ def ansible_lint(step: StepRunner) -> None:
         [
             "ansible-galaxy",
             "install",
-            "--role-file=requirements.yml",
+            "--role-file=extensions/molecule/default/requirements.yml",
             "--force",
         ],
         env=env,
