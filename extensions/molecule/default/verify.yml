@@ -1,5 +1,5 @@
 ---
-- name: Install a new debian system
+- name: Validate the newly installed OS
   hosts: external
 
   vars:
@@ -32,9 +32,9 @@
 
     - name: Ensure the fstab contains the expected number of lines
       ansible.builtin.assert:
-        that: (fstab.content | b64decode | regex_findall("\\S.*") | length) == (root_disks | length)
+        that: (fstab.content | b64decode | regex_findall("\\S.*") | length) == (root_disks | length + 1)
         msg: |
-          Expected {{ root_disks | length }} entries in fstab. Got {{ fstab.content | b64decode | regex_findall("\\S.*") | length }} instead:
+          Expected {{ root_disks | length + 1 }} entries in fstab. Got {{ fstab.content | b64decode | regex_findall("\\S.*") | length }} instead:
           ---
           {{ fstab.content | b64decode }}
           ---
