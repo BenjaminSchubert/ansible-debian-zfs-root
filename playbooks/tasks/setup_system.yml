@@ -171,6 +171,20 @@
     group: root
     mode: "0o644"
 
+- name: Create the systemd tmp.mount override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/tmp.mount.d
+    state: directory
+    mode: "0o755"
+
+- name: Ensure /tmp is mounted as noexec
+  ansible.builtin.copy:
+    content: |
+      [Mount]
+      Options=nodev,noexec,nosuid
+    dest: /etc/systemd/system/tmp.mount.d/override.conf
+    mode: "0o644"
+
 - name: Enable the /tmp tmpfs mount service
   ansible.builtin.systemd:
     service: tmp.mount
@@ -219,6 +233,7 @@
       UUID={{ ansible_facts.devices[disk].partitions[disk + "1"].uuid }} /boot/efi/.esp-{{ disk }} vfat defaults,nofail,umask=0077,relatime,x-systemd.after=zfs-mount.service 0 1
       {% endfor %}
       {%- endif -%}
+      rpool/var /var zfs x-systemd-before=zfs-mount.service 0 0
     # yamllint enable rule:line-length
     dest: /etc/fstab
     mode: "0o644"

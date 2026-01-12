@@ -91,6 +91,22 @@
 
 - name: Create zfs volumes
   community.general.zfs:
+    name: rpool/var
+    state: present
+    extra_zfs_properties:
+      mountpoint: legacy
+      devices: false
+      setuid: false
+
+- name: Mount /mnt/var
+  ansible.posix.mount:
+    src: rpool/var
+    path: /mnt/var
+    fstype: zfs
+    state: mounted
+
+- name: Create zfs volumes
+  community.general.zfs:
     name: rpool/{{ item.name }}
     state: present
     extra_zfs_properties: "{{ item.properties | default({}) }}"
@@ -103,26 +119,50 @@
       properties:
         mountpoint: /boot
     - name: home
+      properties:
+        devices: false
+        setuid: false
     - name: home/root
       properties:
+        devices: false
         mountpoint: /root
+        setuid: false
     - name: home/{{ admin_username }}
-    - name: var
-      properties:
-        canmount: false
-    - name: var/lib
-      properties:
-        canmount: false
     - name: var/log
+      properties:
+        mountpoint: /var/log
+        devices: false
+        exec: false
+        setuid: false
     - name: var/spool
+      properties:
+        mountpoint: /var/spool
     - name: var/cache
+      properties:
+        mountpoint: /var/cache
     - name: var/tmp
+      properties:
+        mountpoint: /var/tmp
+        devices: false
+        exec: false
+        setuid: false
 
 - name: Ensure /mnt/var/tmp has the right permissions
   ansible.builtin.file:
     name: /mnt/var/tmp
     state: directory
     mode: "0o1777"
+
+- name: Mount tmpfs filesystems
+  ansible.posix.mount:
+    src: tmpfs
+    path: /mnt/{{ item }}
+    fstype: tmpfs
+    opts: nosuid,noexec,nodev
+    state: mounted
+  loop:
+    - run
+    - tmp
 
 - name: Deboostrap the system
   ansible.builtin.command: |
@@ -166,16 +206,6 @@
     fstype: proc
     opts: nosuid,noexec,nodev
     state: mounted
-
-- name: Mount tmpfs filesystems
-  ansible.posix.mount:
-    src: tmpfs
-    path: /mnt/{{ item }}
-    fstype: tmpfs
-    state: mounted
-  loop:
-    - run
-    - tmp
 
 - name: Mount /boot/efi
   ansible.posix.mount:
