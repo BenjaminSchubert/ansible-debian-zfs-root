@@ -12,11 +12,18 @@ dependencies:
   community.general: "*"
 
 readme: README.md
+license_file: LICENSE
 repository: https://github.com/BenjaminSchubert/ansible-debian-zfs-root
 
 manifest:
   omit_default_directives: true
   directives:
+    - recursive-include extensions **
     - recursive-include playbooks **
     - include requirements *.txt
     - include .ansible-lint.yml
+    - include inventory.example.yml
+
+tags:
+  - infrastructure
+  - linux
