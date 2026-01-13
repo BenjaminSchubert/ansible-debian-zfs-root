@@ -58,6 +58,7 @@
       - locales
       - man-db
       - openssh-server
+      - polkitd  # required for systemd-networkd to set hostname
       - rsync
       - sudo
       - shim-signed
