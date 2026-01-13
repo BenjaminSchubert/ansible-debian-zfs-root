@@ -135,6 +135,23 @@
       - adm
       - sudo
 
+- name: Ensure the permissions on the admin home directory are correct
+  ansible.builtin.file:
+    path: /home/{{ admin_username }}
+    mode: "0o700"
+    owner: "{{ admin_username }}"
+    group: "{{ admin_username }}"
+    state: directory
+
+- name: Copy the skeleton files for the user
+  ansible.builtin.copy:
+    src: /etc/skel/
+    dest: /home/{{ admin_username }}/
+    remote_src: true
+    owner: "{{ admin_username }}"
+    group: "{{ admin_username }}"
+    mode: preserve
+
 - name: Set authorized key taken for the admin user
   ansible.posix.authorized_key:
     user: "{{ admin_username }}"
