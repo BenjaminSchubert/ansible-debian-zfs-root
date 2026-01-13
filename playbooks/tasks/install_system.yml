@@ -106,6 +106,7 @@
     - name: home/root
       properties:
         mountpoint: /root
+    - name: home/{{ admin_username }}
     - name: var
       properties:
         canmount: false
