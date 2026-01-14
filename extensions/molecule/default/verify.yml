@@ -80,3 +80,16 @@
       ansible.builtin.assert:
         that: "'0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.' in packages.stdout_lines"
         msg: "{{ packages.stdout_lines }}"
+
+    ##
+    # Configuration
+    ##
+    - name: Get the localtime information
+      ansible.builtin.stat:
+        path: /etc/localtime
+      register: _timezone
+
+    - name: Ensure the timezone is set properly
+      ansible.builtin.assert:
+        that: _timezone.stat.lnk_target == '/usr/share/zoneinfo/' + (timezone | default('Etc/UTC'))
+        msg: Expected {{ _timezone.stat.lnk_target }} to point to /usr/share/zoneinfo/{{ timezone | default('Etc/UTC') }}
