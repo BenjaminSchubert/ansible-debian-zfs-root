@@ -1,5 +1,6 @@
 ---
 - name: Setup apt proxy
+  become: true
   ansible.builtin.copy:
     content: Acquire::http { Proxy "{{ apt_proxy_url }}"; };
     dest: /etc/apt/apt.conf.d/80-use-proxy
@@ -9,6 +10,7 @@
   when: apt_proxy_url | default("") | length > 0
 
 - name: Remove default apt lists
+  become: true
   ansible.builtin.file:
     name: /etc/apt/sources.list
     state: absent
