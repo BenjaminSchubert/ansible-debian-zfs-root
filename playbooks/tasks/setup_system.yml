@@ -34,24 +34,11 @@
     autoremove: true
     update_cache: true
 
-- name: Install kernel drivers utilities
-  ansible.builtin.apt:
-    name:
-      - dkms
-      - openssl
-    state: present
-    install_recommends: false
-
-- name: Ensure ZFS update rebuilds all initramfs
-  ansible.builtin.copy:
-    dest: /etc/dkms/zfs.conf
-    content: REMAKE_INITRD=yes
-    mode: "0o644"
-
 - name: Install required packages
   ansible.builtin.apt:
     name:
       - console-setup
+      - dkms
       - dropbear-initramfs
       - linux-image-amd64
       - linux-headers-amd64
@@ -65,8 +52,15 @@
       - systemd-boot
       - systemd-resolved
       - tmux
+      - util-linux-extra  # Required for hwclock for localtime
       - zstd
     install_recommends: false
+
+- name: Ensure ZFS update rebuilds all initramfs
+  ansible.builtin.copy:
+    dest: /etc/dkms/zfs.conf
+    content: REMAKE_INITRD=yes
+    mode: "0o644"
 
 - name: Install zfs packages
   ansible.builtin.apt:
@@ -77,52 +71,33 @@
 
 - name: Ensure the requested locale exists
   community.general.locale_gen:
-    name: "{{ item }}"
+    name: "{{ locales | default(['en_US.UTF-8']) }}"
     state: present
-  loop:
-    - en_US.UTF-8
-    - en_GB.UTF-8
 
-- name: Set default locale to en_GB.UTF-8
+- name: Set default locale
   ansible.builtin.debconf:
     name: locales
     question: locales/default_environment_locale
-    value: en_GB.UTF-8
+    value: "{{ locales[0] | default('en_US.UTF-8') }}"
     vtype: select
 
 - name: Configure locales to generate
   ansible.builtin.debconf:
     name: locales
     question: locales/locales_to_be_generated
-    value: en_US.UTF-8 en_GB.UTF-8 UTF-8
+    value: "{{ locales | default(['en_US.UTF-8']) | join(' ') }} UTF-8"
     vtype: multiselect
 
-- name: Set timezone area
-  ansible.builtin.debconf:
-    name: tzdata
-    question: tzdata/Areas
-    value: Europe
-    vtype: select
-
-- name: Set timezone city
-  ansible.builtin.debconf:
-    name: tzdata
-    question: tzdata/Zones/Europe
-    value: Zurich
-    vtype: select
-
-- name: Set timezone UTC
-  ansible.builtin.debconf:
-    name: tzdata
-    question: tzdata/Zones/Etc
-    value: UTC
-    vtype: select
+- name: Set timezone
+  become: true
+  community.general.timezone:
+    name: "{{ timezone | default('Etc/UTC') }}"
 
 - name: Set keyboard
   ansible.builtin.debconf:
     name: keyboard-configuration
     question: keyboard-configuration/variant
-    value: English (US)
+    value: "{{ keyboard | default('English (US)') }}"
     vtype: select
 
 - name: Create the admin user
