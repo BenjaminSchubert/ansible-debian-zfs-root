@@ -143,6 +143,7 @@
     - name: var/tmp
       properties:
         mountpoint: /var/tmp
+        devices: false
         exec: false
         setuid: false
 
