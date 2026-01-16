@@ -233,7 +233,7 @@
       UUID={{ ansible_facts.devices[disk].partitions[disk + "1"].uuid }} /boot/efi/.esp-{{ disk }} vfat defaults,nofail,umask=0077,relatime,x-systemd.after=zfs-mount.service 0 1
       {% endfor %}
       {%- endif -%}
-      rpool/var /var zfs x-systemd-before=zfs-mount.service 0 0
+      rpool/var /var zfs x-systemd.before=zfs-mount.service 0 0
     # yamllint enable rule:line-length
     dest: /etc/fstab
     mode: "0o644"
