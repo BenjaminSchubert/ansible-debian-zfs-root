@@ -1,6 +1,8 @@
 ---
 - name: Install the new system
   ansible.builtin.import_playbook: benschubert.debian_zfs_root.provision
+  vars:
+    debian_zfs_root_hosts: molecule
 
 - name: Reconfigure the host
   hosts: localhost
@@ -8,13 +10,13 @@
   tasks:
     - name: Stop the VM gracefully
       community.libvirt.virt:
-        name: "{{ groups['external'] | first }}"
+        name: "{{ groups.molecule | first }}"
         state: shutdown
         uri: qemu:///session
 
     - name: Wait for the VM to be off
       community.libvirt.virt:
-        name: "{{ groups['external'] | first }}"
+        name: "{{ groups.molecule | first }}"
         command: status
         uri: qemu:///session
       until: _vm_stat.status == "shutdown"
@@ -24,14 +26,14 @@
 
     - name: Restart the VM
       community.libvirt.virt:
-        name: "{{ groups['external'] | first }}"
+        name: "{{ groups.molecule | first }}"
         state: running
         uri: qemu:///session
 
     - name: Set the ip address and hostvars
       ansible.builtin.set_fact:
-        addr: "{{ hostvars[groups['external'][0]].ansible_host }}"
-        hvars: "{{ hostvars[groups['external'][0]] }}"
+        addr: "{{ hostvars[groups.molecule | first].ansible_host }}"
+        hvars: "{{ hostvars[groups.molecule | first] }}"
 
     - name: Wait for ssh to be up for dropbear
       ansible.builtin.wait_for:
@@ -61,7 +63,7 @@
             command: facts
           until: >-
             _networks.ansible_facts.ansible_libvirt_networks.default.dhcp_leases
-            | selectattr('hostname', 'equalto', groups['external'][0])
+            | selectattr('hostname', 'equalto', groups.molecule | first)
             | length == 1
           register: _networks
 
@@ -70,7 +72,7 @@
             addr: >-
               {{
                 ansible_facts.libvirt_networks.default.dhcp_leases
-                | selectattr('hostname', 'equalto', groups['external'][0])
+                | selectattr('hostname', 'equalto', groups.molecule | first)
                 | map(attribute='ipaddr')
                 | first
               }}
