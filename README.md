@@ -54,7 +54,7 @@ This is the most critical part of the setup and later steps _**will wipe**_ disk
 ⚠️⚠️⚠️
 
 
-Copy the example inventory file [./inventory.examlep.yml](./inventory.example.yml)
+Copy the example inventory file [./inventory.example.yml](./inventory.example.yml)
  and fill in the fields according to the inline documentation.
 
 
@@ -65,7 +65,7 @@ Copy the example inventory file [./inventory.examlep.yml](./inventory.example.ym
 In order to install the system, run:
 
 ```
-ansible-playbook --diff playbooks/provision.yml
+ansible-playbook --diff playbooks/provision.yml --extra-vars="debian_zfs_root_hosts=${TARGET_SERVER_IP_ADDRESS_HERE}"
 ```
 
 Once it is done, you can safely reboot your computer, and will be able to log

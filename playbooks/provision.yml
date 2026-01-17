@@ -1,6 +1,6 @@
 ---
 - name: Install a new debian system
-  hosts: external
+  hosts: "{{ debian_zfs_root_hosts | default(none) }}"
 
   handlers:
     - name: Restart sshd
@@ -23,7 +23,7 @@
 
 
 - name: Install a new debian system
-  hosts: external
+  hosts: "{{ debian_zfs_root_hosts | default(none) }}"
 
   vars:
     ansible_port: 8922
@@ -33,7 +33,7 @@
       ansible.builtin.import_tasks: tasks/setup_system.yml
 
 - name: Cleanup post installation
-  hosts: external
+  hosts: "{{ debian_zfs_root_hosts | default(none) }}"
 
   tasks:
     - name: Remove the temporary proxy

@@ -1,5 +1,5 @@
 ---
-external:
+molecule:
   hosts:
     debian-zfs-root-mirror:
       admin_username: testuser

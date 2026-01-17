@@ -1,5 +1,5 @@
 ---
-external:
+all:
   hosts:
     # The ip address (or hostname) of the host you want to install
     #
