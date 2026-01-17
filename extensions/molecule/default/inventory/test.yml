@@ -12,7 +12,6 @@ molecule:
         - en_GB.UTF-8
         - en_US.UTF-8
       mokutil_password: "{{ admin_password }}"
-      network_interface: enp1s0
       timezone: Europe/Zurich
       root_disks:
         - vda
