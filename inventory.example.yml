@@ -59,7 +59,8 @@ all:
 
       # The network interface on which to configure connectivity
       #
-      network_interface: enp1s0
+      # This will default to the default ipv4 interface
+      # network_interface: enp1s0
 
       # A proxy for downloading apt packages
       #
