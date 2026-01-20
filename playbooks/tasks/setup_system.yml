@@ -37,6 +37,7 @@
 - name: Install required packages
   ansible.builtin.apt:
     name:
+      - apparmor
       - console-setup
       - dkms
       - dropbear-initramfs
