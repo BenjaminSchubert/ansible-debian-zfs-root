@@ -235,6 +235,7 @@
       {% endfor %}
       {%- endif -%}
       rpool/var /var zfs x-systemd.before=zfs-mount.service 0 0
+      rpool/var/log /var/log zfs x-systemd.before=zfs-mount.service 0 0
     # yamllint enable rule:line-length
     dest: /etc/fstab
     mode: "0o644"
