@@ -89,7 +89,7 @@
 - name: Mount the root filesystem
   ansible.builtin.command: zfs mount rpool/ROOT/debian
 
-- name: Create zfs volumes
+- name: Create var zfs volumes
   community.general.zfs:
     name: rpool/var
     state: present
@@ -98,12 +98,25 @@
       devices: false
       setuid: false
 
-- name: Mount /mnt/var
+- name: Create var/log zfs volume
+  community.general.zfs:
+    name: rpool/var/log
+    state: present
+    extra_zfs_properties:
+      mountpoint: legacy
+      devices: false
+      exec: false
+      setuid: false
+
+- name: Mount legacy filesystems
   ansible.posix.mount:
-    src: rpool/var
-    path: /mnt/var
+    src: rpool/{{ item }}
+    path: /mnt/{{ item }}
     fstype: zfs
     state: mounted
+  loop:
+    - var
+    - var/log
 
 - name: Create zfs volumes
   community.general.zfs:
@@ -128,12 +141,6 @@
         mountpoint: /root
         setuid: false
     - name: home/{{ admin_username }}
-    - name: var/log
-      properties:
-        mountpoint: /var/log
-        devices: false
-        exec: false
-        setuid: false
     - name: var/spool
       properties:
         mountpoint: /var/spool
