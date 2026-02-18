@@ -178,7 +178,7 @@
     {{ ansible_facts.distribution_release }}
     /mnt
   environment:
-    http_proxy: "{{ (apt_proxy_url | length > 0) | ternary(apt_proxy_url, omit) }}"
+    http_proxy: "{{ (apt_proxy_url | default('') | length > 0) | ternary(apt_proxy_url, omit) }}"
   args:
     creates: /mnt/etc
 
