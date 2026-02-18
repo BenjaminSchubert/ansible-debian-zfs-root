@@ -68,6 +68,12 @@ In order to install the system, run:
 ansible-playbook --diff playbooks/provision.yml --extra-vars="debian_zfs_root_hosts=${TARGET_SERVER_IP_ADDRESS_HERE}"
 ```
 
+If you prefer, you can also ask for passwords as you run:
+
+```
+ansible-playbook --diff playbooks/interactive.yml --extra-vars="debian_zfs_root_hosts=${TARGET_SERVER_IP_ADDRESS_HERE}"
+```
+
 Once it is done, you can safely reboot your computer, and will be able to log
 in remotely!
 

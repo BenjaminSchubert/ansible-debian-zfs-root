@@ -33,6 +33,9 @@ all:
       pool_mode:
 
       # The password to use to encrypt for the root pool
+      #
+      # NOTE: not needed if using the interactive playbook
+      #
       zfs_pool_password: "FILL ME UP"
 
       # The fully qualified domain name of your computer
@@ -44,6 +47,8 @@ all:
       admin_username: "admin"
 
       # The password the admin, generate one using `mkpasswd --method=sha-512`
+      #
+      # NOTE: not needed if using the interactive playbook
       #
       admin_password:
 
@@ -74,6 +79,8 @@ all:
       #
       # Defaults to the admin password.
       # Use `mkpasswd --method=sha512` to generate one otherwise.
+      #
+      # NOTE: not needed if using the interactive playbook
       #
       mokutil_password: "{{ admin_password }}"
 
