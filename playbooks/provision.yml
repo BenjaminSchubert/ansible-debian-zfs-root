@@ -46,6 +46,7 @@
       ansible.builtin.command:
         cmd: ssh -O stop root@{{ inventory_hostname }} -p 8922
       changed_when: true
+      failed_when: false
       tags:
         - molecule-notest
 
