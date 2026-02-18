@@ -1,0 +1,30 @@
+---
+- name: Ask for secrets before installing
+  hosts: "{{ debian_zfs_root_hosts | default(none) }}"
+
+  vars_prompt:
+    - name: admin_password
+      prompt: Enter admin password
+      encrypt: bcrypt
+      confirm: true
+      salt_size: 22
+
+    - name: zfs_pool_password
+      prompt: Enter zfs pool password
+      confirm: true
+
+    - name: mokutil_password
+      prompt: Enter mokutil password
+      encrypt: sha512_crypt
+      confirm: true
+      salt_size: 7
+
+  tasks:
+    - name: Set the passwords
+      ansible.builtin.set_fact:
+        admin_password: "{{ admin_password }}"
+        zfs_pool_password: "{{ zfs_pool_password }}"
+        mokutil_password: "{{ mokutil_password }}"
+
+- name: Run the installation
+  import_playbook: benschubert.debian_zfs_root.provision
