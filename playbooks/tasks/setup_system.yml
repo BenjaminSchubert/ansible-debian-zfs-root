@@ -228,10 +228,10 @@
   ansible.builtin.copy:
     # yamllint disable rule:line-length
     content: |
-      UUID={{ ansible_facts.devices[root_disks[0]].partitions[root_disks[0] + "1"].uuid }} /boot/efi vfat defaults,{% if root_disks | length > 1 %}nofail,{% endif %}umask=0077,relatime,x-systemd.after=zfs-mount.service 0 1
+      UUID={{ (ansible_facts.devices[root_disks[0]].partitions | dictsort | first)[1].uuid }} /boot/efi vfat defaults,{% if root_disks | length > 1 %}nofail,{% endif %}umask=0077,relatime,x-systemd.after=zfs-mount.service 0 1
       {% if root_disks | length > 1 %}
       {% for disk in root_disks[1:] %}
-      UUID={{ ansible_facts.devices[disk].partitions[disk + "1"].uuid }} /boot/efi/.esp-{{ disk }} vfat defaults,nofail,umask=0077,relatime,x-systemd.after=zfs-mount.service 0 1
+      UUID={{ (ansible_facts.devices[disk].partitions | dictsort | first)[1].uuid }} /boot/efi/.esp-{{ disk }} vfat defaults,nofail,umask=0077,relatime,x-systemd.after=zfs-mount.service 0 1
       {% endfor %}
       {%- endif -%}
       rpool/var /var zfs x-systemd.before=zfs-mount.service 0 0

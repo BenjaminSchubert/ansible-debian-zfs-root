@@ -38,7 +38,7 @@
   community.general.filesystem:
     fstype: vfat
     opts: -F 32 -s 1 -n EFI
-    dev: "/dev/disk/by-id/{{ ansible_facts.devices[item].partitions[item + '1'].links.ids[0] }}"
+    dev: "/dev/disk/by-id/{{ (ansible_facts.devices[item].partitions | dictsort | first)[1].links.ids[0] }}"
   loop: "{{ root_disks }}"
 
 - name: Create the zfs rpool pool
@@ -64,7 +64,7 @@
         rpool
         {{ pool_mode | default() }}
         {% for disk in root_disks %}
-          {{ ansible_facts.devices[disk].partitions[disk + "2"].links.ids[0] }}
+          {{ (ansible_facts.devices[disk].partitions | dictsort | last)[1].links.ids[0] }}
         {% endfor %}
     responses:
       Enter new passphrase: "{{ zfs_pool_password }}"
@@ -220,12 +220,12 @@
     opts: defaults,umask=0077,relatime
     passno: "1"
     path: /mnt/boot/efi
-    src: /dev/{{ root_disks[0] }}1
+    src: /dev/{{ (ansible_facts.devices[root_disks[0]].partitions | dictsort | first)[0] }}
     state: mounted
 
 - name: Mount mirror esp partitions
   ansible.posix.mount:
-    src: /dev/{{ item }}1
+    src: /dev/{{ (ansible_facts.devices[item].partitions | dictsort | first)[0] }}
     path: /mnt/boot/efi/.esp-{{ item }}
     fstype: vfat
     opts: defaults,umask=0077,relatime
