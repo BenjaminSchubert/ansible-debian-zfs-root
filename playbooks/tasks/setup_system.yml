@@ -241,7 +241,7 @@
     mode: "0o644"
 
 - name: Install systemd-boot on all partitions
-  ansible.builtin.command: bootctl install --esp-path=/boot/efi/.esp-{{ item }}/ --efi-boot-option-description literal:"Linux Boot Manager - {{ item }}"
+  ansible.builtin.command: bootctl install --esp-path=/boot/efi/.esp-{{ item }}/ --efi-boot-option-description "Linux Boot Manager - {{ item }}"
   loop: "{{ root_disks[1:] }}"
 
 - name: Install script to keep the boot mirrors in sync
