@@ -70,6 +70,9 @@
       Enter new passphrase: "{{ zfs_pool_password }}"
       Re-enter new passphrase: "{{ zfs_pool_password }}"
 
+- name: Update devices facts again
+  ansible.builtin.setup:
+
 - name: Create root zfs mountpoints
   community.general.zfs:
     name: rpool/ROOT
