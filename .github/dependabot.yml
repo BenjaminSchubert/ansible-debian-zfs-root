@@ -1,0 +1,13 @@
+---
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    assignees:
+      - BenjaminSchubert
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      dependencies:
+        patterns:
+          - "*"
