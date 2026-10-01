@@ -49,23 +49,25 @@
 
     - name: Download the Debian base image
       ansible.builtin.get_url:
-        url: https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2
-        dest: "{{ molecule_ephemeral_directory | dirname }}/original-debian-13.qcow2"
+        url: https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.tar.xz
+        dest: "{{ molecule_ephemeral_directory | dirname }}/original-debian-13.tar.xz"
         mode: "0o644"
         checksum: sha512:https://cloud.debian.org/images/cloud/trixie/latest/SHA512SUMS
         timeout: 60
 
-    - name: Copy the pre-downloaded image
-      ansible.builtin.copy:
-        src: "{{ molecule_ephemeral_directory | dirname }}/original-debian-13.qcow2"
-        dest: "{{ molecule_ephemeral_directory }}/bootstrap.qcow2"
-        mode: "0o644"
-        force: false
+    - name: Extract the pre-downloaded image
+      ansible.builtin.command:
+        cmd: tar -xJf {{ molecule_ephemeral_directory | dirname }}/original-debian-13.tar.xz --transform 's|^disk\.raw$|bootstrap.raw|' disk.raw
+        creates: "{{ molecule_ephemeral_directory }}/bootstrap.raw"
+        chdir: "{{ molecule_ephemeral_directory }}"
+      register: _out
+      tags:
+        - skip_ansible_lint
 
     - name: Create the system disk(s)
       ansible.builtin.command:
-        cmd: qemu-img create -f qcow2 {{ molecule_ephemeral_directory }}/disk-{{ item }}.qcow2 10G
-        creates: "{{ molecule_ephemeral_directory }}/disk-{{ item }}.qcow2"
+        cmd: qemu-img create -f qcow2 {{ molecule_ephemeral_directory }}/disk-{{ item }}.raw 10G
+        creates: "{{ molecule_ephemeral_directory }}/disk-{{ item }}.raw"
       loop: "{{ hostvars[groups.molecule | first].root_disks }}"
 
     - name: Build the list of disks to use
@@ -74,7 +76,7 @@
           {{
             _all_disks | default([]) + [
               {
-                "path": molecule_ephemeral_directory + "/disk-" + item + ".qcow2",
+                "path": molecule_ephemeral_directory + "/disk-" + item + ".raw",
                 "serial": item,
                 "boot":   {"order": idx + 1}
               }
@@ -94,7 +96,7 @@
         disks: >-
           {{
             _all_disks + [{
-              'path': molecule_ephemeral_directory + "/bootstrap.qcow2",
+              'path': molecule_ephemeral_directory + "/bootstrap.raw",
               'boot': {"order": hostvars[groups.molecule | first].root_disks | length + 1}
             }]
           }}
