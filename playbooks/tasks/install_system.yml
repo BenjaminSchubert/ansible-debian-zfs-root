@@ -60,6 +60,7 @@
         -O relatime=on
         -O xattr=sa
         -O mountpoint=/
+        {{ zpool_create_extra_options | default('') }}
         -R /mnt
         rpool
         {{ pool_mode | default() }}
