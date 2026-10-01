@@ -5,9 +5,13 @@ ansible:
       ansible_playbook:
         - --inventory=${MOLECULE_SCENARIO_DIRECTORY}/inventory
   env:
+    ANSIBLE_CALLBACKS_ENABLED: ansible.posix.profile_roles, ansible.posix.profile_tasks
     ANSIBLE_CALLBACK_RESULT_FORMAT: yaml
     ANSIBLE_DIFF_ALWAYS: "True"
     ANSIBLE_PIPELINING: "True"
+    PROFILE_TASKS_SUMMARY_ONLY: "True"
+    PROFILE_TASKS_TASK_OUTPUT_LIMIT: 10
+    PROFILE_ROLES_SUMMARY_ONLY: "True"
 
 dependency:
   name: galaxy
