@@ -21,10 +21,7 @@
       - mokutil
       - parted
       - python3-pexpect
-
-- name: Install zfs packages
-  ansible.builtin.apt:
-    name: zfs-dkms
+      - zfs-dkms
 
 - name: Ensure zfs modules are loaded
   community.general.modprobe:
