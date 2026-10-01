@@ -22,3 +22,5 @@ molecule:
       admin_password_clear: testuser
       apt_proxy_url: "{{ lookup('ansible.builtin.env', 'APT_PROXY_URL') }}"
       debian_mirror: "{{ lookup('ansible.builtin.env', 'DEBIAN_MIRROR') }}"
+      # Disable safety checks on ZFS to speedup testing
+      zpool_create_extra_options: -O sync=disabled -O checksum=off
